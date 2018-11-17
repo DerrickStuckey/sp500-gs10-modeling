@@ -29,12 +29,18 @@ with open(fname,'rb') as f:
 data = pd.DataFrame(rows, columns=['Date.Raw','SP.Price','Dividend','Earnings','CPI','Date.Fraction','GS10','Real.Price','Real.Dividend','Real.Earnings','CAPE'])
 
 # format dates nicely
-data['Date'] = ["%s-%s-01" % tuple(x.split('.')) for x in data['Date.Raw']]
+def fix_date(rawdate):
+	year, month = rawdate.split(".")
+	if(month=="1"):
+		month="10"
+	return("%s-%s-01" % (year,month))
+
+data['Date'] = [fix_date(x) for x in data['Date.Raw']]
 
 # prices for next and previous month
 data['SP.Price.Last'] = data['SP.Price'].shift(1)
 data['SP.Price.Next'] = data['SP.Price'].shift(-1)
 
 # save the data to a .tsv
-data.to_csv("./schiller_sp_data_formatted.csv",index=False)
+data.to_csv("./schiller_sp_data_formatted.tsv",index=False,sep="\t")
 
