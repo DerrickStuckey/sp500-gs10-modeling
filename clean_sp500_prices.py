@@ -3,7 +3,7 @@ import csv
 import numpy as np
 
 # S&P 500 daily price data
-spdata = pd.read_csv("GSPC.csv")
+spdata = pd.read_csv("sp500_daily_prices.csv")
 
 spdata['Adj Close'] = pd.to_numeric(spdata['Adj Close'],errors=coerce)
 
@@ -26,4 +26,4 @@ spdata['Prev Adj Close'] = spdata['Adj Close'].shift(1)
 
 # import pdb; pdb.set_trace()
 
-spdata.to_csv("GSPC_cleaned.csv",index=False)
+spdata.to_csv("sp500_daily_cleaned.csv",index=False)
