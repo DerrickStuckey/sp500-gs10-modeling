@@ -2,7 +2,7 @@ import pandas as pd
 import csv
 import numpy as np
 
-# from https://fred.stlouisfed.org/series/T10Y2Y
+# from 
 ycdata = pd.read_csv("T10Y2Y.csv")
 
 # coerce series to numeric value, replacing '.' with NaN
@@ -20,6 +20,9 @@ missing_idx = np.isnan(ycdata['T10Y2Y'])
 # overwrite the value as the average of the previous and next datapoints, if it is missing
 for i in missing_idx[missing_idx].index:
 	ycdata.loc[i,'T10Y2Y.imputed'] = np.nanmean([ycdata.loc[i,'T10Y2Y.prev'],ycdata.loc[i,'T10Y2Y.next']])
+
+# find "inversion" points where 10-year 2-year spread turns negative
+ycdata['Inversion'] = np.logical_and(ycdata['T10Y2Y.imputed']<0, ycdata['T10Y2Y.imputed'].shift(1)>=0)
 
 ycdata.to_csv("T10Y2Y_imputed.csv",index=False)
 
