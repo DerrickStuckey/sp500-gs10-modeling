@@ -9,8 +9,8 @@ yieldcurve <- read.csv("./T10Y2Y_imputed.csv",sep=",",stringsAsFactors = FALSE)
 head(yieldcurve)
 
 # format dates
-sp.data$Date <- as.POSIXct(sp.data$Date)
-yieldcurve$DATE <- as.POSIXct(yieldcurve$DATE)
+sp.data$Date <- as.Date(sp.data$Date)
+yieldcurve$DATE <- as.Date(yieldcurve$DATE)
 
 # merge the datasets
 combined.data <- merge(sp.data, yieldcurve, by.x="Date",by.y="DATE")
@@ -19,6 +19,11 @@ tail(combined.data)
 nrow(combined.data)
 nrow(yieldcurve)
 nrow(sp.data)
+
+# from https://fredhelp.stlouisfed.org/fred/data/understanding-the-data/recession-bars/
+recessions <- read.table("./recessions.tsv",sep="\t",header=TRUE,colClasses=c('Date', 'Date'))
+head(recessions)
+recessions.trim <- recessions[recessions$Peak>min(combined.data$Date),]
 
 # Boolean var for Yield Curve Inversion
 combined.data$Yield.Curve.Status <- "Positive"
@@ -29,13 +34,14 @@ run=1
 run.start <- combined.data$Date[1]
 current.status=combined.data$Yield.Curve.Status[1]
 last.inversion <- NA
-for(i in 2:nrow(combined.data)) {
+combined.data$last.inversion[1] <- NA
+for(i in 1:nrow(combined.data)) {
   if(combined.data$Yield.Curve.Status[i]!=current.status) {
     run <- run+1
     run.start <- combined.data$Date[i]
     current.status <- combined.data$Yield.Curve.Status[i]
     if(combined.data$Yield.Curve.Status[i]=="Inverted") {
-      print(combined.data$Date[i])
+      # print(combined.data$Date[i])
       last.inversion <- combined.data$Date[i]
     }
   }
@@ -44,36 +50,37 @@ for(i in 2:nrow(combined.data)) {
   combined.data$days.since.last.inversion[i] <- combined.data$Date[i] - last.inversion
   combined.data$last.inversion[i] <- last.inversion
 }
+combined.data$last.inversion <- as.Date(combined.data$last.inversion,tz="GMT",origin="1970-01-01")
+head(combined.data$last.inversion)
+tail(combined.data$last.inversion)
 
-# Yield curve
-# png("./yield_curve_plots_daily/yield_curve_vs_time.png")
-plot(combined.data$Date,combined.data$T10Y2Y.imputed,type="l",
-     main="Yield Curve (10-Year minus Fed Funds)",xlab="Date",ylab="10Y-2Y",
-     col="blue",yaxt="n")
-breaks <- c(-2,-1,0,1,2,3)
-breaklabels <- paste(breaks,"%",sep="")
-axis(2,at=breaks,lab=breaklabels)
-abline(h=0)
-# dev.off()
+# Yield curve with recessions shaded
+ggplot(data=combined.data) + 
+  geom_line(aes(x=Date,y=T10Y2Y.imputed/100),color="blue") + 
+  ggtitle("10-Year 2-Year Treasury Spread") + 
+  xlab("Date") + ylab("10Y-2Y") + 
+  theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
+  geom_hline(yintercept=0) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
+  geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='black', alpha=0.3)
+# ggsave(filename = "./yield_curve_plots_daily/yield_curve_with_recessions.png")
 
 ## Daily S&P 500 price change
 combined.data$SP.Price.Change.Forward <- (combined.data$Next.Adj.Close / combined.data$Adj.Close - 1)
 plot(combined.data$SP.Price.Change.Forward,type="l")
 
 # Forward 1-day S&P price change vs yield curve inversion
-png("./yield_curve_plots_daily/sp_day_price_vs_yc_boxplot.png")
 ggplot(combined.data, aes(x=Yield.Curve.Status, y=SP.Price.Change.Forward)) + 
   ggtitle("Daily S&P Price Change vs\n Inverted Yield Curve") +
   xlab("Yield Curve") + ylab("% Change in S&P 500") + 
   geom_boxplot(outlier.shape = NA, notch=FALSE) + 
   scale_y_continuous(limits=c(-.025,.025),
                        labels = scales::percent_format(accuracy = 1)) +
-  theme(plot.title = element_text(hjust = 0.5)) + 
+  theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
   stat_summary(fun.y=mean, geom="point", shape=5, size=4)
-dev.off()
+# ggsave(filename="./yield_curve_plots_daily/sp_day_price_vs_yc_boxplot.png")
 
 # Density Plot
-png("./yield_curve_plots_daily/sp_day_price_vs_yc_density.png")
 ggplot(combined.data, aes(x=SP.Price.Change.Forward,fill=Yield.Curve.Status)) + 
   ggtitle("Daily S&P Price Change vs\n Inverted Yield Curve") +
   xlab("% Change in S&P 500") + ylab("Freqency") + 
@@ -81,7 +88,7 @@ ggplot(combined.data, aes(x=SP.Price.Change.Forward,fill=Yield.Curve.Status)) +
   scale_x_continuous(limits=c(-0.05,0.05), labels = scales::percent_format(accuracy = 1)) + 
   theme(plot.title = element_text(hjust = 0.5)) + 
   labs(fill="Yield Curve")
-dev.off()
+ggsave(filename="./yield_curve_plots_daily/sp_day_price_vs_yc_density.png")
 
 summary(combined.data$SP.Price.Change.Forward)
 summary(combined.data$SP.Price.Change.Forward[combined.data$T10Y2Y.imputed<0])
@@ -181,17 +188,19 @@ inversion.starts <- subset(combined.data[!is.na(combined.data$days.since.last.in
                                      combined.data$days.since.last.inversion==0,],select=c("Date","Adj.Close"))
 head(inversion.starts)
 names(inversion.starts)[2] <- "Last.Inversion.Adj.Close"
+# combined.data$Date <- as.Date(combined.data$Date)
 after.inversion <- combined.data[!is.na(combined.data$days.since.last.inversion) & 
                                    combined.data$days.since.last.inversion<365*2,]
 head(after.inversion)
 after.inversion <- merge(after.inversion,inversion.starts,by.x="last.inversion",by.y="Date")
 after.inversion <- after.inversion[order(after.inversion$Date),]
 head(after.inversion)
-after.inversion$Price.Change.Since.Last.Inversion <- after.inversion$Adj.Close / after.inversion$Last.Inversion.Adj.Close
+after.inversion$Price.Change.Since.Last.Inversion <- after.inversion$Adj.Close / after.inversion$Last.Inversion.Adj.Close - 1
 after.inversion$last.inversion <- as.factor(after.inversion$last.inversion)
 inversion.lengths <- table(after.inversion$last.inversion)
-selected.inversions <- inversion.lengths[inversion.lengths>9]
 summary(as.integer(inversion.lengths))
+selected.inversions <- inversion.lengths[inversion.lengths>9]
+head(selected.inversions)
 
 inversion.periods <- after.inversion[after.inversion$Yield.Curve.Status=="Inverted",]
 inversion.periods <- inversion.periods[order(inversion.periods$Date, decreasing=TRUE),]
@@ -201,28 +210,50 @@ names(inversion.periods) <- c("StartDate","EndDate")
 inversion.periods$StartDate <- as.Date(inversion.periods$StartDate)
 inversion.periods$EndDate <- as.Date(inversion.periods$EndDate)
 combined.data$Date <- as.Date(combined.data$Date)
+head(inversion.periods)
 
 ## plot S&P 500 vs days since last inversion
 after.inversion.selected <- after.inversion[after.inversion$last.inversion %in% names(selected.inversions),]
-png("./yield_curve_plots_daily/sp_price_since_last_inversion")
+head(after.inversion.selected)
 ggplot(data=after.inversion.selected, aes(x=days.since.last.inversion, y=Price.Change.Since.Last.Inversion, color=last.inversion)) +
   geom_line(aes(group=run)) +
-  # geom_jitter() + 
-  # geom_point() + 
-  ggtitle("S&P Price vs Time") +
-  xlab("Days Since Last Inversion") + ylab("S&P 500") + 
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  labs(color="Last Inversion") + scale_y_continuous(labels = scales::percent_format(accuracy=1))
-dev.off()
+  ggtitle("S&P Price Change Since Last Inversion") +
+  xlab("Days Since Last Inversion") + ylab("% Change in S&P 500") + 
+  theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
+  labs(color="Last Inversion") + scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
+  geom_hline(yintercept=0, linetype="solid", color = "black") + 
+  scale_color_discrete(breaks=c(names(inversion.lengths[inversion.lengths>200])))
+# ggsave(filename="./yield_curve_plots_daily/sp_price_since_last_inversion2.png")
 
 ## plot log-scale S&P 500 vs time, highlighting inverted yield curve periods
-png("./yield_curve_plots_daily/sp_vs_time_yccolor_bars.png")
 ggplot(combined.data) + 
-  geom_line(aes(x=date, y=Adj.Close, color=Yield.Curve.Status, group=run)) + 
+  geom_line(aes(x=Date, y=Adj.Close, color=Yield.Curve.Status, group=run)) + 
   ggtitle("S&P Price vs Time") + 
   xlab("Date") + ylab("S&P 500 (Log-scaled)") +
-  theme(plot.title = element_text(hjust = 0.5)) + 
+  theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
   scale_y_log10() + labs(color="Yield Curve") + 
   geom_rect(data=inversion.periods, aes(xmin=StartDate, xmax=EndDate, ymin=0, ymax=+Inf), fill='pink', alpha=0.4)
-dev.off()
+# ggsave(filename="./yield_curve_plots_daily/sp_vs_time_yccolor_bars.png")
+
+## average price change vs days since last inversion
+weeks.after.inversion <- aggregate(data.frame("Price.Change.Since.Last.Inversion"=after.inversion$Price.Change.Since.Last.Inversion),
+                                   by=list("weeks.since.last.inversion"=round(after.inversion$days.since.last.inversion/7,0),
+                                           "last.inversion"=after.inversion$last.inversion),
+                                   FUN=mean)
+head(weeks.after.inversion)
+
+average.after.inversion <- aggregate(data.frame("Price.Change.Since.Last.Inversion"=weeks.after.inversion$Price.Change.Since.Last.Inversion),
+                                     by=list("weeks.since.last.inversion"=weeks.after.inversion$weeks.since.last.inversion),
+                                     FUN=mean)
+head(average.after.inversion)
+average.after.inversion$days.since.last.inversion <- average.after.inversion$weeks.since.last.inversion * 7
+ggplot(data=average.after.inversion) +
+  geom_line(aes(x=days.since.last.inversion, y=Price.Change.Since.Last.Inversion), color="blue") +
+  ggtitle("Average S&P Price Change\nSince Last Inversion") +
+  xlab("Days Since Last Inversion") + ylab("% Change in S&P 500") + 
+  theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
+  geom_hline(yintercept=0, linetype="solid", color = "black")
+# ggsave(filename="./yield_curve_plots_daily/avg_sp_since_last_inv.png")
+
 
