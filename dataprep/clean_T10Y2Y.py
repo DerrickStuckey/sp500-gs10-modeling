@@ -3,7 +3,7 @@ import csv
 import numpy as np
 
 # from 
-ycdata = pd.read_csv("T10Y2Y.csv")
+ycdata = pd.read_csv("../raw_data/T10Y2Y.csv")
 
 # coerce series to numeric value, replacing '.' with NaN
 ycdata['T10Y2Y'] = pd.to_numeric(ycdata['T10Y2Y'],errors=coerce)
@@ -24,6 +24,6 @@ for i in missing_idx[missing_idx].index:
 # find "inversion" points where 10-year 2-year spread turns negative
 ycdata['Inversion'] = np.logical_and(ycdata['T10Y2Y.imputed']<0, ycdata['T10Y2Y.imputed'].shift(1)>=0)
 
-ycdata.to_csv("T10Y2Y_imputed.csv",index=False)
+ycdata.to_csv("../prepared_data/T10Y2Y_imputed.csv",index=False)
 
 

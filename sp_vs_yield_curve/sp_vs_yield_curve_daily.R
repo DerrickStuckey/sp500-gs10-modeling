@@ -1,11 +1,11 @@
 library(ggplot2)
 
 # S&P 500 daily price data
-sp.data <- read.csv("./sp500_daily_cleaned.csv", sep=",", stringsAsFactors = FALSE)
+sp.data <- read.csv("./prepared_data/sp500_daily_cleaned.csv", sep=",", stringsAsFactors = FALSE)
 head(sp.data)
 
 # from https://fred.stlouisfed.org/series/FEDFUNDS
-yieldcurve <- read.csv("./T10Y2Y_imputed.csv",sep=",",stringsAsFactors = FALSE)
+yieldcurve <- read.csv("./prepared_data/T10Y2Y_imputed.csv",sep=",",stringsAsFactors = FALSE)
 head(yieldcurve)
 
 # format dates
@@ -21,7 +21,7 @@ nrow(yieldcurve)
 nrow(sp.data)
 
 # from https://fredhelp.stlouisfed.org/fred/data/understanding-the-data/recession-bars/
-recessions <- read.table("./recessions.tsv",sep="\t",header=TRUE,colClasses=c('Date', 'Date'))
+recessions <- read.table("./raw_data/recessions.tsv",sep="\t",header=TRUE,colClasses=c('Date', 'Date'))
 head(recessions)
 recessions.trim <- recessions[recessions$Peak>min(combined.data$Date),]
 
@@ -63,7 +63,7 @@ ggplot(data=combined.data) +
   geom_hline(yintercept=0) + 
   scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
   geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='black', alpha=0.3)
-# ggsave(filename = "./yield_curve_plots_daily/yield_curve_with_recessions.png")
+# ggsave(filename = "./sp_vs_yield_curve/yield_curve_plots_daily/yield_curve_with_recessions2.png")
 
 ## Daily S&P 500 price change
 combined.data$SP.Price.Change.Forward <- (combined.data$Next.Adj.Close / combined.data$Adj.Close - 1)
@@ -78,7 +78,7 @@ ggplot(combined.data, aes(x=Yield.Curve.Status, y=SP.Price.Change.Forward)) +
                        labels = scales::percent_format(accuracy = 1)) +
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
   stat_summary(fun.y=mean, geom="point", shape=5, size=4)
-# ggsave(filename="./yield_curve_plots_daily/sp_day_price_vs_yc_boxplot.png")
+# ggsave(filename="./sp_vs_yield_curve/yield_curve_plots_daily/sp_day_price_vs_yc_boxplot.png")
 
 # Density Plot
 ggplot(combined.data, aes(x=SP.Price.Change.Forward,fill=Yield.Curve.Status)) + 
@@ -88,7 +88,7 @@ ggplot(combined.data, aes(x=SP.Price.Change.Forward,fill=Yield.Curve.Status)) +
   scale_x_continuous(limits=c(-0.05,0.05), labels = scales::percent_format(accuracy = 1)) + 
   theme(plot.title = element_text(hjust = 0.5)) + 
   labs(fill="Yield Curve")
-ggsave(filename="./yield_curve_plots_daily/sp_day_price_vs_yc_density.png")
+ggsave(filename="./sp_vs_yield_curve/yield_curve_plots_daily/sp_day_price_vs_yc_density.png")
 
 summary(combined.data$SP.Price.Change.Forward)
 summary(combined.data$SP.Price.Change.Forward[combined.data$T10Y2Y.imputed<0])
@@ -223,7 +223,7 @@ ggplot(data=after.inversion.selected, aes(x=days.since.last.inversion, y=Price.C
   labs(color="Last Inversion") + scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
   geom_hline(yintercept=0, linetype="solid", color = "black") + 
   scale_color_discrete(breaks=c(names(inversion.lengths[inversion.lengths>200])))
-# ggsave(filename="./yield_curve_plots_daily/sp_price_since_last_inversion2.png")
+# ggsave(filename="./sp_vs_yield_curve/yield_curve_plots_daily/sp_price_since_last_inversion2.png")
 
 ## plot log-scale S&P 500 vs time, highlighting inverted yield curve periods
 ggplot(combined.data) + 
@@ -233,7 +233,7 @@ ggplot(combined.data) +
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
   scale_y_log10() + labs(color="Yield Curve") + 
   geom_rect(data=inversion.periods, aes(xmin=StartDate, xmax=EndDate, ymin=0, ymax=+Inf), fill='pink', alpha=0.4)
-# ggsave(filename="./yield_curve_plots_daily/sp_vs_time_yccolor_bars.png")
+# ggsave(filename="./sp_vs_yield_curve/yield_curve_plots_daily/sp_vs_time_yccolor_bars.png")
 
 ## average price change vs days since last inversion
 weeks.after.inversion <- aggregate(data.frame("Price.Change.Since.Last.Inversion"=after.inversion$Price.Change.Since.Last.Inversion),
@@ -254,6 +254,6 @@ ggplot(data=average.after.inversion) +
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
   scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
   geom_hline(yintercept=0, linetype="solid", color = "black")
-# ggsave(filename="./yield_curve_plots_daily/avg_sp_since_last_inv.png")
+# ggsave(filename="./sp_vs_yield_curve/yield_curve_plots_daily/avg_sp_since_last_inv.png")
 
 

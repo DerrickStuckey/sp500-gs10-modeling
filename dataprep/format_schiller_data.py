@@ -4,7 +4,7 @@ import numpy as np
 
 # Schiller S&P price data
 # 'Data' tab from http://www.econ.yale.edu/~shiller/data/ie_data.xls - saved as tab-delimited text
-fname = "./schiller_sp_data.txt"
+fname = "../raw_data/schiller_sp_data.txt"
 rows = []
 with open(fname,'rb') as f:
 	thereader = csv.reader(f,delimiter="\t")
@@ -40,7 +40,11 @@ data['Date'] = [fix_date(x) for x in data['Date.Raw']]
 # prices for next and previous month
 data['SP.Price.Last'] = data['SP.Price'].shift(1)
 data['SP.Price.Next'] = data['SP.Price'].shift(-1)
+data['SP.Price.Prev.6Mo'] = data['SP.Price'].shift(6)
+data['SP.Price.Next.6Mo'] = data['SP.Price'].shift(-6)
+data['SP.Price.Prev.12Mo'] = data['SP.Price'].shift(12)
+data['SP.Price.Next.12Mo'] = data['SP.Price'].shift(-12)
 
 # save the data to a .tsv
-data.to_csv("./schiller_sp_data_formatted.tsv",index=False,sep="\t")
+data.to_csv("../prepared_data/schiller_sp_data_formatted.tsv",index=False,sep="\t")
 

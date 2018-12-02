@@ -3,7 +3,7 @@ import csv
 import numpy as np
 
 # S&P 500 daily price data
-spdata = pd.read_csv("sp500_daily_prices.csv")
+spdata = pd.read_csv("../raw_data/sp500_daily_prices.csv")
 
 spdata['Adj Close'] = pd.to_numeric(spdata['Adj Close'],errors=coerce)
 
@@ -18,12 +18,17 @@ for i in spdata.index:
 		spdata.loc[i,'Adj Close 90 Ahead'] = spdata.loc[spdata['Date']>=lookahead_90_date,'Adj Close'].values[0]
 		lookahead_30_date = curdate + pd.Timedelta('30 days')
 		spdata.loc[i,'Adj Close 30 Ahead'] = spdata.loc[spdata['Date']>=lookahead_30_date,'Adj Close'].values[0]
+		lookaback_30_date = curdate - pd.Timedelta('30 days')
+		spdata.loc[i,'Adj Close 30 Ahead'] = spdata.loc[spdata['Date']<=lookaback_30_date,'Adj Close'].values[-1]
 	except:
 		continue
 
 spdata['Next Adj Close'] = spdata['Adj Close'].shift(-1)
 spdata['Prev Adj Close'] = spdata['Adj Close'].shift(1)
+spdata['Adj Close 2 Prev'] = spdata['Adj Close'].shift(2)
+spdata['Adj Close 3 Prev'] = spdata['Adj Close'].shift(3)
+spdata['Adj Close 4 Prev'] = spdata['Adj Close'].shift(4)
 
 # import pdb; pdb.set_trace()
 
-spdata.to_csv("sp500_daily_cleaned.csv",index=False)
+spdata.to_csv("../prepared_data/sp500_daily_cleaned.csv",index=False)
