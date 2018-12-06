@@ -47,6 +47,9 @@ t.test(sp.data.sel$SP.Price.Change.Forward ~ sp.data.sel$Prev.SP.Direction)
 aggregate(sp.data.sel$SP.Price.Change.Forward,
           by=list("Prev.Direction"=sp.data.sel$Prev.SP.Direction),
           FUN=mean)
+# Prev.Direction             x
+# 1           Down -0.0002496785
+# 2             Up  0.0008597255
 
 # last 20 years only
 # boxplot for next S&P price change vs previous S&P price change direction
@@ -66,6 +69,9 @@ chisq.test(sp.data.recent$Prev.SP.Direction,
 aggregate(sp.data.recent$SP.Price.Change.Forward,
           by=list("Prev.Direction"=sp.data.recent$Prev.SP.Direction),
           FUN=mean)
+# Prev.Direction             x
+# 1           Down  0.0007834305
+# 2             Up -0.0001733372
 
 # last year only
 # boxplot for next S&P price change vs previous S&P price change direction
