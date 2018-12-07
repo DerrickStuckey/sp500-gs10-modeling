@@ -27,7 +27,7 @@ ggplot(data=sp.data[!is.na(sp.data$Prev.SP.Direction) & !is.na(sp.data$SP.Price.
   scale_x_continuous(limits=c(-0.05,0.05), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
   labs(fill="Previous S&P Move")
-ggsave(filename = "./momentum_analysis/momentum_charts_1/sp_daily_mo_density.png")
+# ggsave(filename = "./momentum_analysis/momentum_charts_1/sp_daily_mo_density.png")
 
 # boxplot for next S&P price change vs previous S&P price change direction
 ggplot(data=sp.data[!is.na(sp.data$Prev.SP.Direction) & !is.na(sp.data$SP.Price.Change.Forward),]) + 
@@ -36,7 +36,7 @@ ggplot(data=sp.data[!is.na(sp.data$Prev.SP.Direction) & !is.na(sp.data$SP.Price.
   xlab("Previous Days's Price Change Direction") + ylab("Current Day's Price Change") + 
   scale_y_continuous(limits=c(-0.025,0.025), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename = "./momentum_analysis/momentum_charts_1/sp_daily_mo_boxplot_1950_2018.png")
+# ggsave(filename = "./momentum_analysis/momentum_charts_1/sp_daily_mo_boxplot_1950_2018.png")
 
 sp.data.sel <- sp.data[!is.na(sp.data$Prev.SP.Direction) & !is.na(sp.data$SP.Price.Change.Forward),]
 chisq.test(sp.data.sel$Prev.SP.Direction, 
@@ -51,6 +51,7 @@ aggregate(sp.data.sel$SP.Price.Change.Forward,
 # 1           Down -0.0002496785
 # 2             Up  0.0008597255
 
+
 # last 20 years only
 # boxplot for next S&P price change vs previous S&P price change direction
 sp.data.recent <- sp.data[!is.na(sp.data$Prev.SP.Direction) & !is.na(sp.data$SP.Price.Change.Forward) & 
@@ -61,7 +62,7 @@ ggplot(data=sp.data.recent) +
   xlab("Previous Days's Price Change Direction") + ylab("Current Day's Price Change") + 
   scale_y_continuous(limits=c(-0.03,0.03), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename = "./momentum_analysis/momentum_charts_1/sp_daily_mo_1998_2018.png")
+# ggsave(filename = "./momentum_analysis/momentum_charts_1/sp_daily_mo_1998_2018.png")
 
 chisq.test(sp.data.recent$Prev.SP.Direction, 
            sp.data.recent$SP.Price.Change.Forward>0)
@@ -93,22 +94,27 @@ ggplot(data=sp.data[!is.na(sp.data$Prev.SP.Direction) & !is.na(sp.data$Prev.SP.D
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
 
 # aggregate data by Year
-sp.data$Year <- as.numeric(substr(as.character(sp.data$Date),1,4))
-yearly.mo <- aggregate(data.frame("Positive.Change.Pct"=sp.data$SP.Price.Change.Forward>0,
-                     "Avg.Change"=sp.data$SP.Price.Change.Forward),
-          by=list("Year"=sp.data$Year,"Prev.SP.Direction"=sp.data$Prev.SP.Direction),
+sp.data.sel$Year <- as.numeric(substr(as.character(sp.data.sel$Date),1,4))
+yearly.mo <- aggregate(data.frame("Positive.Change.Pct"=sp.data.sel$SP.Price.Change.Forward>0,
+                     "Avg.Change"=sp.data.sel$SP.Price.Change.Forward),
+          by=list("Year"=sp.data.sel$Year,"Prev.SP.Direction"=sp.data.sel$Prev.SP.Direction),
           FUN=mean)
 head(yearly.mo)
 library(reshape2)
 yearly.mo.dir <- dcast(yearly.mo, Year ~ Prev.SP.Direction, value.var="Positive.Change.Pct", FUN=mean)
 yearly.mo.dir$Diff <- yearly.mo.dir$Up - yearly.mo.dir$Down
 # View(yearly.mo.dir)
-write.csv(yearly.mo.dir, file="./momentum_analysis/momentum_charts_1/daily_momentum_by_year_dir.csv", row.names=FALSE)
+# write.csv(yearly.mo.dir, file="./momentum_analysis/momentum_charts_1/daily_momentum_by_year_dir.csv", row.names=FALSE)
 
 yearly.mo.avg <- dcast(yearly.mo, Year ~ Prev.SP.Direction, value.var="Avg.Change", FUN=mean)
 yearly.mo.avg$Diff <- yearly.mo.avg$Up - yearly.mo.avg$Down
 # View(yearly.mo.avg)
-write.csv(yearly.mo.avg, file="./momentum_analysis/momentum_charts_1/daily_momentum_by_year_avg.csv", row.names=FALSE)
+# write.csv(yearly.mo.avg, file="./momentum_analysis/momentum_charts_1/daily_momentum_by_year_avg.csv", row.names=FALSE)
+
+library(plyr)
+yearly.mo.cor <- ddply(sp.data.sel,"Year",function(x) cor(x$SP.Price.Change.Forward>0,x$SP.Price.Change.Backward>0))
+# View(yearly.mo.cor)
+# write.csv(yearly.mo.cor, file="./momentum_analysis/momentum_charts_1/daily_momentum_by_year_cor.csv", row.names=FALSE)
 
 # prob density vs last two moves, when last move is up
 ggplot(data=sp.data[sp.data$Prev.SP.Direction.Last.2 %in% c("Down,Up","Up,Up"),]) + 
@@ -152,7 +158,7 @@ ggplot(data=sp.data.monthly.midcent) +
   xlab("Previous Month's Price Change Direction") + ylab("Current Month's Price Change") + 
   scale_y_continuous(limits=c(-0.1,0.1), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename="./momentum_analysis/momentum_charts_1/month_vs_month_boxplot_1950_1998.png")
+# ggsave(filename="./momentum_analysis/momentum_charts_1/month_vs_month_boxplot_1950_1998.png")
 
 # month vs last month price change direction chi-sq test, 1950 - 1998
 chisq.test(sp.data.monthly.midcent$Prev.SP.Direction, sp.data.monthly.midcent$SP.Price.Change.Forward>0)
@@ -174,7 +180,7 @@ ggplot(data=sp.data.monthly.recent) +
   xlab("Previous Month's Price Change Direction") + ylab("Current Month's Price Change") + 
   scale_y_continuous(limits=c(-0.1,0.1), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename="./momentum_analysis/momentum_charts_1/month_vs_month_boxplot_1998_2018.png")
+# ggsave(filename="./momentum_analysis/momentum_charts_1/month_vs_month_boxplot_1998_2018.png")
 
 # month vs last month price change direction chi-sq test, 1998 - 2018
 chisq.test(sp.data.monthly.recent$Prev.SP.Direction, sp.data.monthly.recent$SP.Price.Change.Forward>0)
@@ -196,7 +202,7 @@ ggplot(data=sp.data.monthly.premodern) +
   xlab("Previous Month's Price Change Direction") + ylab("Current Month's Price Change") + 
   scale_y_continuous(limits=c(-0.1,0.1), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename="./momentum_analysis/momentum_charts_1/month_vs_month_boxplot_1870_1949.png")
+# ggsave(filename="./momentum_analysis/momentum_charts_1/month_vs_month_boxplot_1870_1949.png")
 
 # month vs last month price change direction chi-sq test, 1998 - 2018
 chisq.test(sp.data.monthly.premodern$Prev.SP.Direction, sp.data.monthly.premodern$SP.Price.Change.Forward>0)
@@ -222,7 +228,7 @@ ggplot(data=sp.data.biannual[!is.na(sp.data.biannual$Prev.SP.Direction.6mo),]) +
   xlab("Previous 6-Month Price Change Direction") + ylab("Current 6-Month Price Change") + 
   scale_y_continuous(limits=c(-0.25,0.25), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1870_2018.png")
+# ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1870_2018.png")
 
 sp.data.biannual.recent <- sp.data.biannual[sp.data.biannual$Date>=as.Date("2000-01-01"),]
 table(sp.data.biannual.recent$Prev.SP.Direction.6mo, sp.data.biannual.recent$SP.Price.Change.Forward.6mo>0)
@@ -241,7 +247,7 @@ ggplot(data=sp.data.monthly[!is.na(sp.data.monthly$Prev.SP.Direction.6mo) &
   xlab("Previous 6-Month Price Change Direction") + ylab("Current 6-Month Price Change") + 
   scale_y_continuous(limits=c(-0.30,0.30), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1998_2018_allmonths.png")
+# ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1998_2018_allmonths.png")
 
 # 1950 - 1997
 ggplot(data=sp.data.monthly[!is.na(sp.data.monthly$Prev.SP.Direction.6mo) &
@@ -252,7 +258,7 @@ ggplot(data=sp.data.monthly[!is.na(sp.data.monthly$Prev.SP.Direction.6mo) &
   xlab("Previous 6-Month Price Change Direction") + ylab("Current 6-Month Price Change") + 
   scale_y_continuous(limits=c(-0.30,0.30), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1950_1997_allmonths.png")
+# ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1950_1997_allmonths.png")
 
 # 1870 - 1949
 ggplot(data=sp.data.monthly[!is.na(sp.data.monthly$Prev.SP.Direction.6mo) &
@@ -263,5 +269,5 @@ ggplot(data=sp.data.monthly[!is.na(sp.data.monthly$Prev.SP.Direction.6mo) &
   xlab("Previous 6-Month Price Change Direction") + ylab("Current 6-Month Price Change") + 
   scale_y_continuous(limits=c(-0.30,0.30), labels = scales::percent_format(accuracy = 1)) + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5))
-ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1870_1949_allmonths.png")
+# ggsave(filename="./momentum_analysis/momentum_charts_1/6month_vs_6month_boxplot_1870_1949_allmonths.png")
 
