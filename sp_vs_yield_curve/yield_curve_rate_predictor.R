@@ -142,4 +142,14 @@ chisq.test(table(combined.data.12ahead$Tbill.Rate.12.Months.Change>0,combined.da
 # Inverted status definitely predicts lower T-bill rates in 12 months time
 # on average, about 1% lower
 
+# Overall 10Y - 3Mo spread vs 12-month change in interest rates
+plot(combined.data.12ahead$spread,
+     combined.data.12ahead$Tbill.Rate.12.Months.Change)
+cor(combined.data.12ahead$spread,combined.data.12ahead$Tbill.Rate.12.Months.Change)
+
+# When the 10Y - 3Mo spread is positive, does it still have a relationship to future changes in interest rates?
+combined.data.12ahead.positive <- combined.data.12ahead[combined.data.12ahead$Yield.Curve.Status=="Positive",]
+plot(combined.data.12ahead.positive$spread,
+     combined.data.12ahead.positive$Tbill.Rate.12.Months.Change)
+cor(combined.data.12ahead.positive$spread,combined.data.12ahead.positive$Tbill.Rate.12.Months.Change)
 
