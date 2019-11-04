@@ -245,3 +245,42 @@ ggplot(data=avg.sp.vs.gs, aes(x=months.since.last.inversion, y=SP.GS10.Return.Sp
 
 
 
+
+
+# momentum vs yield curve
+mo.data <- combined.data
+mo.data$recent.inversion <- mo.data$months.since.last.inversion < 36
+table(mo.data$recent.inversion)
+
+mo.data$mo.6mo <- mo.data$SP.Price > mo.data$SP.Price.Prev.6Mo
+table(mo.data$mo.6mo)
+
+boxplot(mo.data$SP.Return.Forward ~ mo.data$recent.inversion, outline=FALSE)
+boxplot(mo.data$SP.Return.Forward ~ mo.data$mo.6mo, outline=FALSE)
+
+boxplot(mo.data$SP.Return.Forward ~ mo.data$recent.inversion + mo.data$mo.6mo)
+boxplot(mo.data$SP.Return.Forward.6Mo ~ mo.data$recent.inversion + mo.data$mo.6mo)
+
+# look at avg and sd of returns versus these 2 variables
+avg.returns <- aggregate(data.frame("return.avg"=mo.data$SP.Return.Forward), 
+                         by=list("recent.inversion"=mo.data$recent.inversion,
+                                 "momentum.6mo"=mo.data$mo.6mo),
+                         FUN=function(x) mean(x,na.rm = TRUE))
+avg.returns
+sd.returns <- aggregate(data.frame("return.sd"=mo.data$SP.Return.Forward), 
+                        by=list("recent.inversion"=mo.data$recent.inversion,
+                                "momentum.6mo"=mo.data$mo.6mo),
+                        FUN=function(x) sd(x,na.rm=TRUE))
+sd.returns
+count.returns <- aggregate(data.frame("months"=mo.data$SP.Return.Forward), 
+                        by=list("recent.inversion"=mo.data$recent.inversion,
+                                "momentum.6mo"=mo.data$mo.6mo),
+                        FUN=function(x) sum(!is.na(x)))
+count.returns
+
+mo.summary <- merge(avg.returns,sd.returns,by=c("recent.inversion","momentum.6mo"))
+mo.summary <- merge(mo.summary,count.returns,by=c("recent.inversion","momentum.6mo"))
+mo.summary
+
+write.csv(mo.summary,file="./sp_vs_yield_curve/momentum_results.csv",row.names=FALSE)
+
