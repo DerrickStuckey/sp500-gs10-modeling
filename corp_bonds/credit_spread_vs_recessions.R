@@ -8,6 +8,7 @@ head(GS10)
 tail(GS10)
 
 # Moody's Aaa Corporate bond yield
+# note: underlying bonds are 20+ year maturities, so not 100% comparable to 10-year treasury
 # https://fred.stlouisfed.org/series/AAA
 corp.bonds <- read.csv("./raw_data/AAA.csv", stringsAsFactors = FALSE)
 head(corp.bonds)
@@ -38,3 +39,6 @@ ggplot(data=combined.data) +
   geom_hline(yintercept=0) + 
   scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
   geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='black', alpha=0.3)
+
+
+
