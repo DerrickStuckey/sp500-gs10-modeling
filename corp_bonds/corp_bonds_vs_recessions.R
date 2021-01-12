@@ -36,6 +36,7 @@ head(corp.bonds)
 
 # calculate months since last recession
 corp.bonds$months.since.last.recession <- -1
+corp.bonds$latest.recession <- as.Date("0001-01-01")
 first.recession.start <- as.Date(first(recessions.trim$Peak))
 start.index <- match(first.recession.start, corp.bonds$Date)
 months.since <- -1
@@ -55,6 +56,7 @@ for (i in start.index:nrow(corp.bonds)) {
 
 # calculate months until next recession
 corp.bonds$months.until.next.recession <- -1
+corp.bonds$next.recession <- as.Date("0001-01-01")
 last.recession.start <- as.Date(last(recessions.trim$Peak))
 end.index <- match(last.recession.start, corp.bonds$Date)
 months.until <- -1
@@ -72,7 +74,7 @@ for (j in end.index:1) {
 }
 # View(corp.bonds)
 
-# take subset that is within 12 months of a recession start
+# take 12 months preceding a recession start
 just.before <- corp.bonds %>%
   filter(months.until.next.recession <= 12
          & months.until.next.recession >= 0)
@@ -87,17 +89,43 @@ just.before <- just.before %>%
   inner_join(next.recessions, by="next.recession")
 head(just.before)
 
+# plot AAA yield change prior to each recession start
 ggplot(data=just.before, aes(x=months.until.next.recession*-1, y=(AAA-AAA.at.Next.Recession)/100, color=as.factor(next.recession))) +
   geom_line(aes(group=next.recession)) +
   ggtitle("AAA Bond Yield Change Prior to Recessions") +
-  xlab("Months Until Recession") + ylab("AAA Bond Yield\n(Normalized to 0 at Next Recession)") + 
+  xlab("Months Until Recession") + ylab("AAA Bond Yield Change\nRelative to Yield at Next Recession") + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
   labs(color="Next Recession") + scale_y_continuous(labels = scales::percent_format(accuracy=0.1)) +
   geom_hline(yintercept=0, linetype="solid", color = "black")
-# scale_color_discrete(breaks=c(names(inversion.lengths[inversion.lengths>200])))
 
 just.before %>% filter(months.until.next.recession==12) %>%
   mutate(AAA.vs.Next.Recession = AAA-AAA.at.Next.Recession) %>% 
   View()
+
+
+# take 12 months following a recession start
+just.after <- corp.bonds %>%
+  filter(months.since.last.recession <= 12
+         & months.since.last.recession >= 0)
+# View(just.before)
+head(just.after)
+prev.recessions <- corp.bonds %>%
+  filter(months.since.last.recession == 0) %>%
+  select(latest.recession, AAA) %>%
+  rename(AAA.at.Latest.Recession=AAA)
+head(prev.recessions)
+just.after <- just.after %>%
+  inner_join(prev.recessions, by="latest.recession")
+head(just.after)
+
+# plot AAA yield change prior to each recession start
+ggplot(data=just.after, aes(x=months.since.last.recession, y=(AAA-AAA.at.Latest.Recession)/100, color=as.factor(latest.recession))) +
+  geom_line(aes(group=latest.recession)) +
+  ggtitle("AAA Bond Yield Change Following Recession Onset") +
+  xlab("Months After Recession Started") + ylab("AAA Bond Yield\nChange Since Recession Onset") + 
+  theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
+  labs(color="Next Recession") + scale_y_continuous(labels = scales::percent_format(accuracy=0.1)) +
+  geom_hline(yintercept=0, linetype="solid", color = "black")
+
 
 
