@@ -43,12 +43,14 @@ for i in range(0,data.shape[0],1):
 	data.loc[i,'Log.SP.Return.Forward.Cumulative'] = sp_cumulative_log_return
 	data.loc[i,'Log.GS10.Return.Forward.Cumulative'] = gs10_cumulative_log_return
 
-# calculate shifted values for 3-18 months forward
+# calculate shifted values for 3-36 months forward
+data['Log.SP.Return.Forward.Cumulative.36Months.Ahead'] = data['Log.SP.Return.Forward.Cumulative'].shift(-36)
 data['Log.SP.Return.Forward.Cumulative.18Months.Ahead'] = data['Log.SP.Return.Forward.Cumulative'].shift(-18)
 data['Log.SP.Return.Forward.Cumulative.12Months.Ahead'] = data['Log.SP.Return.Forward.Cumulative'].shift(-12)
 data['Log.SP.Return.Forward.Cumulative.6Months.Ahead'] = data['Log.SP.Return.Forward.Cumulative'].shift(-6)
 data['Log.SP.Return.Forward.Cumulative.3Months.Ahead'] = data['Log.SP.Return.Forward.Cumulative'].shift(-3)
 
+data['Log.GS10.Return.Forward.Cumulative.36Months.Ahead'] = data['Log.GS10.Return.Forward.Cumulative'].shift(-36)
 data['Log.GS10.Return.Forward.Cumulative.18Months.Ahead'] = data['Log.GS10.Return.Forward.Cumulative'].shift(-18)
 data['Log.GS10.Return.Forward.Cumulative.12Months.Ahead'] = data['Log.GS10.Return.Forward.Cumulative'].shift(-12)
 data['Log.GS10.Return.Forward.Cumulative.6Months.Ahead'] = data['Log.GS10.Return.Forward.Cumulative'].shift(-6)
@@ -57,4 +59,6 @@ data['Log.GS10.Return.Forward.Cumulative.3Months.Ahead'] = data['Log.GS10.Return
 # import pdb; pdb.set_trace()
 
 # save the data
-data.to_csv("../prepared_data/schiller_sp_data_withreturns.tsv",index=False,sep="\t")
+outfile="../prepared_data/schiller_sp_data_withreturns.tsv"
+data.to_csv(outfile,index=False,sep="\t")
+print("returns data written out to: %s" % outfile)

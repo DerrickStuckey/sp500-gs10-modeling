@@ -46,5 +46,7 @@ data['SP.Price.Prev.12Mo'] = data['SP.Price'].shift(12)
 data['SP.Price.Next.12Mo'] = data['SP.Price'].shift(-12)
 
 # save the data to a .tsv
-data.to_csv("../prepared_data/schiller_sp_data_formatted.tsv",index=False,sep="\t")
+outfile="../prepared_data/schiller_sp_data_formatted.tsv"
+data.to_csv(outfile,index=False,sep="\t")
+print("formatted data written out to: %s" % outfile)
 
