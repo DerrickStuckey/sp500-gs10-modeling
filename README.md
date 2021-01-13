@@ -7,5 +7,4 @@ Save 'data' tab as ./raw_data/schiller_sp_data.txt
 Run:  
 * dataprep/format_schiller_returns.py
 * dataprep/calculate_schiller_returns.py
-* dataprep/calculate_schiller_returns_cumulative.py
 
