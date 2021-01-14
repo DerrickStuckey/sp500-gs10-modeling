@@ -1,3 +1,7 @@
+# A Naive Bayes model for market timing
+# Investing in the S&P 500 or 10-year treasury based on various factors
+library(tidyverse)
+library(lubridate)
 
 # S&P 500 and 10-year treasury returns data
 # monthly since 1871
@@ -23,9 +27,29 @@ boxplot(sp.data$SP.Return.Forward-1 ~ sp.data$SP.Momentum.12Mo>0, outline=FALSE)
 
 
 # Sentiment
+sentiment.data <- read.csv("./prepared_data/sentiment_data_formatted.tsv", sep="\t", stringsAsFactors = FALSE)
+tail(sentiment.data)
+# clean up dates
+sentiment.data$ReportedDate <- lubridate::mdy(sentiment.data$ReportedDate)
+sentiment.data$CeilingMonth <- sentiment.data$ReportedDate %>%
+  ceiling_date(unit = "months")
+# dedupe to one entry per month - keeping the most latest entry for that month
+sentiment.data.monthly <- sentiment.data %>%
+  arrange(CeilingMonth, desc(ReportedDate))
+sentiment.data.monthly <- sentiment.data.monthly %>%
+  distinct(CeilingMonth, .keep_all = TRUE)
+# merge with S&P Data
+sp.data.sentiment <- sp.data %>%
+  inner_join(sentiment.data.monthly, by=c("Date"="CeilingMonth"))
 
+# analyze the relationship between Bullish Sentiment and 1-month forward S&P 500 Return
+plot(sp.data.sentiment$Bullish, sp.data.sentiment$Log.SP.Return.Forward)
+sp.data.sentiment %>%
+  select(Bullish, Log.SP.Return.Forward) %>%
+  drop_na() %>%
+  cor()
 
-# Valuation
+# Valuation (Risk Premium)
 
 
 # Change in Interest Rates
