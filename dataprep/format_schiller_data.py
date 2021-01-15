@@ -16,8 +16,8 @@ with open(fname,'rb') as f:
 			# quit when we hit a row with no Date value
 			if(row[0]==""):
 				break
-			# just keep first 11 columns
-			rows += [row[0:11]]
+			# just keep first 15 columns
+			rows += [row[0:15]]
 		# determine when to start parsing
 		try:
 			if(row[0].startswith(headerstart)):
@@ -26,7 +26,9 @@ with open(fname,'rb') as f:
 			continue
 
 # convert to a Dataframe
-data = pd.DataFrame(rows, columns=['Date.Raw','SP.Price','Dividend','Earnings','CPI','Date.Fraction','GS10','Real.Price','Real.Dividend','Real.Earnings','CAPE'])
+data = pd.DataFrame(rows, columns=['Date.Raw','SP.Price','Dividend','Earnings','CPI','Date.Fraction','GS10','Real.Price','Real.Dividend','Real.TR.Price','Real.Earnings','Real.Earnings.TR.Scaled','CAPE','col14','CAPE.TR.Scaled'])
+# drop the blank column
+data = data.drop(columns='col14')
 
 # format dates nicely
 def fix_date(rawdate):
