@@ -19,11 +19,57 @@ tail(sp.data.train)
 # 6-month price momentum
 sp.data.train$SP.Momentum.6Mo <- sp.data.train$SP.Price - sp.data.train$SP.Price.Prev.6Mo
 boxplot(sp.data.train$SP.Return.Forward-1 ~ sp.data.train$SP.Momentum.6Mo>0, outline=FALSE)
+sp.data.train %>% group_by(SP.Momentum.6Mo>0) %>%
+  drop_na(`SP.Momentum.6Mo > 0`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
 
 # 12-month price momentum
 sp.data.train$SP.Momentum.12Mo <- sp.data.train$SP.Price - sp.data.train$SP.Price.Prev.12Mo
 boxplot(sp.data.train$SP.Return.Forward-1 ~ sp.data.train$SP.Momentum.12Mo>0, outline=FALSE)
+sp.data.train %>% group_by(SP.Momentum.12Mo>0) %>%
+  drop_na(`SP.Momentum.12Mo > 0`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
 
+# 6 and 12-month price momentum together
+boxplot(sp.data.train$SP.Return.Forward-1 ~ (sp.data.train$SP.Momentum.6Mo>0) * (sp.data.train$SP.Momentum.12Mo>0), outline=FALSE)
+sp.data.train %>% group_by(SP.Momentum.6Mo>0,SP.Momentum.12Mo>0) %>%
+  drop_na(`SP.Momentum.6Mo > 0`,`SP.Momentum.12Mo > 0`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
+
+# 1-month price momentum
+sp.data.train$SP.Momentum.1Mo <- sp.data.train$SP.Price - sp.data.train$SP.Price.Last
+boxplot(sp.data.train$SP.Return.Forward-1 ~ sp.data.train$SP.Momentum.1Mo>0, outline=FALSE)
+aggregate(sp.data.train$SP.Return.Forward-1, by=list(sp.data.train$SP.Momentum.1Mo>0),
+          FUN=mean)
+sp.data.train %>% group_by(SP.Momentum.1Mo>0) %>%
+  drop_na(`SP.Momentum.1Mo > 0`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
+
+# 1 and 12-month price momentum together
+boxplot(sp.data.train$SP.Return.Forward-1 ~ (sp.data.train$SP.Momentum.1Mo>0) * (sp.data.train$SP.Momentum.12Mo>0), outline=FALSE)
+sp.data.train %>% group_by(SP.Momentum.1Mo>0,SP.Momentum.12Mo>0) %>%
+  drop_na(`SP.Momentum.1Mo > 0`,`SP.Momentum.12Mo > 0`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
 
 ## Yield Curve (10-year 3-month spread, monthly)
 # from dataprep/yield_curve_calc.R
@@ -58,11 +104,22 @@ sp.data.train.sentiment <- sp.data.train %>%
 
 # analyze the relationship between Bullish Sentiment and 1-month forward S&P 500 Return
 plot(sp.data.train.sentiment$Bullish, sp.data.train.sentiment$Log.SP.Return.Forward)
+plot(sp.data.train.sentiment$Bearish, sp.data.train.sentiment$Log.SP.Return.Forward)
 sp.data.train.sentiment %>%
   select(Bullish, Log.SP.Return.Forward) %>%
   drop_na() %>%
   cor()
 boxplot(sp.data.train.sentiment$Log.SP.Return.Forward ~ sp.data.train.sentiment$Bullish > mean(sp.data.train.sentiment$Bullish))
+
+# look for a good cutoff
+sp.data.train.sentiment %>% group_by(Bullish>0.5) %>%
+  drop_na(`Bullish > 0.5`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
+
 
 ## Valuation (Risk Premium)
 # sp.data.train$Earnings.Yield <- sp.data.train$Earnings / sp.data.train$SP.Price
@@ -117,4 +174,18 @@ plot(y=sp.data.train.tbill$SP.Return.Forward-1, x=sp.data.train.tbill$SP.Risk.Pr
 sp.data.train.tbill %>% select(SP.Return.Forward, SP.Risk.Premium.Tbill.Real) %>%
   drop_na() %>%
   cor()
+
+
+sp.data.train.tbill %>% group_by(SP.Risk.Premium.Tbill>0.01) %>%
+  drop_na(`SP.Risk.Premium.Tbill > 0.01`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
+
+# how close are the two CAPE ratios?
+sp.data %>% select(CAPE,CAPE.TR.Scaled) %>% drop_na() %>% cor()
+sp.data %>% select(CAPE,CAPE.TR.Scaled) %>% drop_na() %>% plot()
+plot(sp.data$Date, sp.data$CAPE.TR.Scaled - sp.data$CAPE)
 

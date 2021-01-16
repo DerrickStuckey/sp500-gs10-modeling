@@ -2,6 +2,8 @@
 # Investing in the S&P 500 or 10-year treasury based on various factors
 library(tidyverse)
 library(lubridate)
+library(e1071)
+library(caret)
 
 # S&P 500 and 10-year treasury returns data
 # from monthly since 1871
@@ -16,8 +18,10 @@ train.test.cutoff <- as.Date("2005-01-01")
 
 # Add 6-month momentum factor
 sp.data$SP.Momentum.6Mo <- sp.data$SP.Price - sp.data$SP.Price.Prev.6Mo
+sp.data$SP.Momentum.6Mo.Negative <- sp.data$SP.Momentum.6Mo < 0
 # may get better performance with a combination of momentum factors, 
 # but don't want to overweight those too heavily vs other factors
+
 
 # Add Yield Curve Status
 yield.curve.data <- read.csv("./prepared_data/yield_curve_10y_3mo.tsv",sep="\t")
@@ -26,11 +30,14 @@ yield.curve.data$DATE <- as.Date(yield.curve.data$DATE, format="%Y-%m-%d")
 # Only keep needed columns
 yield.curve.data <- yield.curve.data %>% select(DATE,GS10.Tbill.Spread,Yield.Curve.Status)
 sp.data <- sp.data %>% left_join(yield.curve.data, by=c("Date"="DATE"))
+table(sp.data$Yield.Curve.Status)
+sp.data$Yield.Curve.Inverted <- sp.data$Yield.Curve.Status=="Inverted"
 
 # Add AAII Sentiment Data
 sentiment.data <- read.csv("./prepared_data/sentiment_data_formatted.tsv", sep="\t", stringsAsFactors = FALSE)
 head(sentiment.data)
 sentiment.data$ReportedDate <- lubridate::mdy(sentiment.data$ReportedDate)
+# Associate the most recent sentiment data report with each month
 sentiment.data$CeilingMonth <- sentiment.data$ReportedDate %>%
   ceiling_date(unit = "months")
 sentiment.data.monthly <- sentiment.data %>%
@@ -38,9 +45,12 @@ sentiment.data.monthly <- sentiment.data %>%
 sentiment.data.monthly <- sentiment.data.monthly %>%
   distinct(CeilingMonth, .keep_all = TRUE)
 head(sentiment.data.monthly)
+# join with the S&P data
 sentiment.data.monthly <- sentiment.data.monthly %>% select(CeilingMonth,Bullish)
 sp.data <- sp.data %>%
   left_join(sentiment.data.monthly, by=c("Date"="CeilingMonth"))
+# construct a bineary feature
+sp.data$Bullish.High <- sp.data$Bullish > 0.5
 
 # Add Risk Premium vs T-bill rate
 TB3MS <- read.csv("./raw_data/TB3MS.csv", stringsAsFactors = FALSE)
@@ -50,6 +60,12 @@ TB3MS$DATE <- as.Date(TB3MS$DATE)
 head(TB3MS)
 sp.data <- sp.data %>% 
   left_join(TB3MS,by=c("Date"="DATE"))
+
+# use CAPE for earnings yield for smoothing
+sp.data$Earnings.Yield <- 1/sp.data$CAPE
+sp.data$SP.Risk.Premium.Tbill <- sp.data$Earnings.Yield - sp.data$Tbill.Rate
+
+sp.data$Low.Risk.Premium <- sp.data$SP.Risk.Premium.Tbill < 0.01
 
 # Construct the target variable
 # For a Naive Bayes model we need a categorical target, so just use a binary variable
@@ -64,8 +80,39 @@ summary(sp.data$SP.Outperforms.GS10)
 # perform training / test split
 sp.data.train <- sp.data %>% filter(Date < "2005-01-01")
 sp.data.test <- sp.data %>% filter(Date >= "2005-01-01")
-tail(sp.data)
+tail(sp.data.train)
+head(sp.data.test)
 
 # train the Naive Bayes model
+
+# probability of negative 6-month momentum | S&P Outperforms GS10
+mo.tmp <- sp.data.train %>% select(SP.Momentum.6Mo.Negative,SP.Outperforms.GS10) %>%
+  drop_na() %>%
+  group_by(SP.Outperforms.GS10) %>%
+  summarize(Negative.Mo.Prob = mean(SP.Momentum.6Mo.Negative))
+p.negative.mo.if.sp.wins <- mo.tmp$Negative.Mo.Prob[mo.tmp$SP.Outperforms.GS10]
+p.negative.mo.if.sp.loses <- mo.tmp$Negative.Mo.Prob[!mo.tmp$SP.Outperforms.GS10]
+
+# just train the whole model at once
+nb.model <- naiveBayes(SP.Outperforms.GS10 ~ Yield.Curve.Inverted + Bullish.High + 
+                         SP.Momentum.6Mo.Negative + Low.Risk.Premium,
+                      data=sp.data.train)
+nb.model
+
+sp.data.test$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.test)
+summary(sp.data.test$SP.Outperforms.GS10.Pred)
+table(sp.data.test$SP.Outperforms.GS10.Pred,
+                sp.data.test$SP.Outperforms.GS10)
+
+# simpler model - predict GS10 outperforms if any 2 predictors positive
+factor.score.test <- as.integer(sp.data.test$Yield.Curve.Status=="Inverted") + 
+  as.integer(sp.data.test$Bullish.High) + 
+  as.integer(sp.data.test$SP.Momentum.6Mo.Negative) + 
+  as.integer(sp.data.test$Low.Risk.Premium)
+table(factor.score.test)
+
+sp.data.test$SP.Outperforms.GS10.Pred.2 <- factor.score.test < 2
+table(sp.data.test$SP.Outperforms.GS10.Pred.2,
+      sp.data.test$SP.Outperforms.GS10)
 
 
