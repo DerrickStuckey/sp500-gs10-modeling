@@ -5,6 +5,7 @@ head(sp.data)
 # from https://fred.stlouisfed.org/series/FEDFUNDS
 fedfunds <- read.csv("./raw_data/FEDFUNDS_1954_2018.csv",sep=",",stringsAsFactors = FALSE)
 head(fedfunds)
+fedfunds$FEDFUNDS <- fedfunds$FEDFUNDS / 100
 
 # format dates
 sp.data$Date <- as.POSIXct(sp.data$Date)
@@ -27,8 +28,8 @@ combined.data$Yield.Curve.10Y <- combined.data$GS10 - combined.data$FEDFUNDS
 plot(combined.data$Date,combined.data$Yield.Curve.10Y,type="l",
      main="Yield Curve (10-Year minus Fed Funds)",xlab="Date",ylab="10Y-FF",
      col="blue",yaxt="n")
-breaks <- c(-6,-4,-2,0,2,4)
-breaklabels <- paste(breaks,"%",sep="")
+breaks <- c(-0.06,-0.04,-0.02,0.0,00.02,0.04)
+breaklabels <- paste(breaks*100,"%",sep="")
 axis(2,at=breaks,lab=breaklabels)
 abline(h=0)
 dev.off()

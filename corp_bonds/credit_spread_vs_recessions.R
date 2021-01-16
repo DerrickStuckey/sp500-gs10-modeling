@@ -6,6 +6,8 @@ library(tidyverse)
 GS10 <- read.csv("./raw_data/GS10.csv", stringsAsFactors = FALSE)
 head(GS10)
 tail(GS10)
+# normalize GS10
+GS10$GS10 <- GS10$GS10 / 100
 
 # Moody's Aaa Corporate bond yield
 # note: underlying bonds are 20+ year maturities, so not 100% comparable to 10-year treasury
@@ -13,6 +15,8 @@ tail(GS10)
 corp.bonds <- read.csv("./raw_data/AAA.csv", stringsAsFactors = FALSE)
 head(corp.bonds)
 tail(corp.bonds)
+# normalize AAA
+corp.bonds$AAA <- corp.bonds$AAA / 100
 
 combined.data <- GS10 %>%
   inner_join(corp.bonds, by=c("DATE"="DATE"))
@@ -32,7 +36,7 @@ recessions.trim <- recessions[recessions$Peak>min(combined.data$Date),]
 
 # plot credit spread with recessions shaded
 ggplot(data=combined.data) + 
-  geom_line(aes(x=Date,y=spread/100),color="blue") + 
+  geom_line(aes(x=Date,y=spread),color="blue") + 
   ggtitle("AAA Bonds Spread vs 10-Year Treasury") + 
   xlab("Date") + ylab("AAA-GS10") + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 

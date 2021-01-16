@@ -10,6 +10,7 @@ tail(corp.bonds)
 corp.bonds$Date <- corp.bonds$DATE %>% as.Date(format="%Y-%m-%d")
 corp.bonds <- corp.bonds %>% select(-DATE)
 head(corp.bonds)
+corp.bonds$AAA <- corp.bonds$AAA / 100
 
 # recessions data
 # from https://fredhelp.stlouisfed.org/fred/data/understanding-the-data/recession-bars/
@@ -21,7 +22,7 @@ recessions.trim <- recessions[recessions$Peak>min(corp.bonds$Date),]
 
 # plot AAA bond yield only
 ggplot(data=corp.bonds) + 
-  geom_line(aes(x=Date,y=AAA/100),color="blue") + 
+  geom_line(aes(x=Date,y=AAA),color="blue") + 
   ggtitle("AAA Bond Yield") + 
   xlab("Date") + ylab("AAA-GS10") + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 

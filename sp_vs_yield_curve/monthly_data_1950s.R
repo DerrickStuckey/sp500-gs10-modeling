@@ -5,6 +5,7 @@ library(ggplot2)
 GS10 <- read.csv("./raw_data/GS10.csv", stringsAsFactors = FALSE)
 head(GS10)
 tail(GS10)
+GS10$GS10 <- GS10$GS10 / 100
 
 # T-bill rate from IMF data
 # from https://fred.stlouisfed.org/series/INTGSTUSM193N
@@ -18,6 +19,7 @@ TB3MS <- read.csv("./raw_data/TB3MS.csv", stringsAsFactors = FALSE)
 head(TB3MS)
 tail(TB3MS)
 names(TB3MS)[2] <- "Tbill.Rate"
+TB3MS$Tbill.Rate <- TB3MS$Tbill.Rate / 100
 
 # combined.data <- merge(GS10, INTGSTUSM193N, by="DATE")
 combined.data <- merge(GS10, TB3MS, by="DATE")
@@ -55,7 +57,7 @@ recessions.trim <- recessions[recessions$Peak>min(combined.data$Date),]
 
 # Yield curve over time with recessions shaded
 ggplot(data=combined.data) + 
-  geom_line(aes(x=Date,y=spread/100),color="blue") + 
+  geom_line(aes(x=Date,y=spread),color="blue") + 
   ggtitle("10-Year T-Bill Treasury Spread") + 
   xlab("Date") + ylab("10Y-2Y") + 
   theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 

@@ -47,6 +47,15 @@ data['SP.Price.Next.6Mo'] = data['SP.Price'].shift(-6)
 data['SP.Price.Prev.12Mo'] = data['SP.Price'].shift(12)
 data['SP.Price.Next.12Mo'] = data['SP.Price'].shift(-12)
 
+# import pdb; pdb.set_trace()
+
+# change the GS10 to decimal value
+data['GS10'] = np.divide(pd.to_numeric(data['GS10'], errors='coerce'),100)
+
+# calculate CPI Change YoY
+data['CPI'] = pd.to_numeric(data['CPI'])
+data['CPI.YoY.Change'] = np.divide(data['CPI'], data['CPI'].shift(12))-1
+
 # save the data to a .tsv
 outfile="../prepared_data/schiller_sp_data_formatted.tsv"
 data.to_csv(outfile,index=False,sep="\t")
