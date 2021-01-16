@@ -20,10 +20,10 @@ combined.data <- merge(GS10, TB3MS, by="DATE")
 combined.data$DATE <- as.Date(combined.data$DATE, format="%Y-%m-%d")
 
 # calculate the 10-Year T-Bill spread
-combined.data$spread <- combined.data$GS10 - combined.data$Tbill.Rate
-hist(combined.data$spread)
+combined.data$GS10.Tbill.Spread <- combined.data$GS10 - combined.data$Tbill.Rate
+hist(combined.data$GS10.Tbill.Spread)
 combined.data$Yield.Curve.Status <- "Positive"
-combined.data$Yield.Curve.Status[combined.data$spread<0] <- "Inverted"
+combined.data$Yield.Curve.Status[combined.data$GS10.Tbill.Spread<0] <- "Inverted"
 table(combined.data$Yield.Curve.Status)
 
 write.table(combined.data, "./prepared_data/yield_curve_10y_3mo.tsv",sep="\t",
