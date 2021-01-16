@@ -93,4 +93,28 @@ sp.data.train %>% select(SP.Return.Forward, SP.Risk.Premium.Real) %>%
   cor()
 
 # try using T-bill rate
+TB3MS <- read.csv("./raw_data/TB3MS.csv", stringsAsFactors = FALSE)
+head(TB3MS)
+tail(TB3MS)
+names(TB3MS)[2] <- "Tbill.Rate"
+TB3MS$Tbill.Rate <- TB3MS$Tbill.Rate / 100
+TB3MS$DATE <- as.Date(TB3MS$DATE)
+sp.data.train.tbill <- sp.data.train %>% 
+  inner_join(TB3MS,by=c("Date"="DATE"))
+
+sp.data.train.tbill$SP.Risk.Premium.Tbill <- sp.data.train.tbill$Earnings.Yield - sp.data.train.tbill$Tbill.Rate
+sp.data.train.tbill <- sp.data.train.tbill %>% 
+  mutate(SP.Risk.Premium.Tbill.Real = Earnings.Yield - (Tbill.Rate - CPI.YoY.Change) )
+summary(sp.data.train.tbill$SP.Risk.Premium.Tbill.Real)
+
+# check out the relationship between risk premium and forward S&P returns
+plot(y=sp.data.train.tbill$SP.Return.Forward-1, x=sp.data.train.tbill$SP.Risk.Premium.Tbill)
+sp.data.train.tbill %>% select(SP.Return.Forward, SP.Risk.Premium.Tbill) %>%
+  drop_na() %>%
+  cor()
+# real version
+plot(y=sp.data.train.tbill$SP.Return.Forward-1, x=sp.data.train.tbill$SP.Risk.Premium.Tbill.Real)
+sp.data.train.tbill %>% select(SP.Return.Forward, SP.Risk.Premium.Tbill.Real) %>%
+  drop_na() %>%
+  cor()
 
