@@ -66,6 +66,7 @@ sp.data$Earnings.Yield <- 1/sp.data$CAPE
 sp.data$SP.Risk.Premium.Tbill <- sp.data$Earnings.Yield - sp.data$Tbill.Rate
 
 sp.data$Low.Risk.Premium <- sp.data$SP.Risk.Premium.Tbill < 0.01
+table(sp.data$Low.Risk.Premium)
 
 # Construct the target variable
 # For a Naive Bayes model we need a categorical target, so just use a binary variable
@@ -73,7 +74,7 @@ sp.data$Low.Risk.Premium <- sp.data$SP.Risk.Premium.Tbill < 0.01
 # on a one-month forward basis
 sp.data <- sp.data %>%
   mutate(
-    SP.Outperforms.GS10 = SP.Return.Forward > GS10.Return.Forward
+    SP.Outperforms.GS10 = as.factor(SP.Return.Forward > GS10.Return.Forward)
   )
 summary(sp.data$SP.Outperforms.GS10)
 
@@ -99,9 +100,16 @@ nb.model <- naiveBayes(SP.Outperforms.GS10 ~ Yield.Curve.Inverted + Bullish.High
                       data=sp.data.train)
 nb.model
 
+# performance against training data
+sp.data.train$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.train)
+summary(sp.data.train$SP.Outperforms.GS10.Pred)
+confusionMatrix(sp.data.train$SP.Outperforms.GS10.Pred,
+      sp.data.train$SP.Outperforms.GS10)
+
+# performance against test data
 sp.data.test$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.test)
 summary(sp.data.test$SP.Outperforms.GS10.Pred)
-table(sp.data.test$SP.Outperforms.GS10.Pred,
+confusionMatrix(sp.data.test$SP.Outperforms.GS10.Pred,
                 sp.data.test$SP.Outperforms.GS10)
 
 # simpler model - predict GS10 outperforms if any 2 predictors positive
@@ -115,4 +123,8 @@ sp.data.test$SP.Outperforms.GS10.Pred.2 <- factor.score.test < 2
 table(sp.data.test$SP.Outperforms.GS10.Pred.2,
       sp.data.test$SP.Outperforms.GS10)
 
-
+sp.data.test %>% select(Date, SP.Return.Forward,GS10.Return.Forward,
+                        SP.Outperforms.GS10, SP.Outperforms.GS10.Pred,
+                        SP.Outperforms.GS10.Pred.2,
+                        Yield.Curve.Inverted, Bullish.High,
+                        SP.Momentum.6Mo.Negative, Low.Risk.Premium) %>% View()
