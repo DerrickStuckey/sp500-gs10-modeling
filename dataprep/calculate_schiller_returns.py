@@ -23,8 +23,8 @@ principal=1
 duration=12*10-1 # duration in months
 for i in range(0,nrows,1):
 	try:
-		coupon_rate=data.loc[i,'GS10']/100/12
-		discount_rate = data.loc[i+1,'GS10']/100/12
+		coupon_rate=data.loc[i,'GS10']/12
+		discount_rate = data.loc[i+1,'GS10']/12
 		data.loc[i,'GS10.NPV.Forward'] = finance_utils.bond_npv(principal=principal,duration=duration,coupon_rate=coupon_rate,discount_rate=discount_rate)
 		data.loc[i,'GS10.Return.Forward'] = data.loc[i,'GS10.NPV.Forward'] + coupon_rate
 	except:
