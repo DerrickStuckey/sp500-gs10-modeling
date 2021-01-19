@@ -189,3 +189,57 @@ sp.data %>% select(CAPE,CAPE.TR.Scaled) %>% drop_na() %>% cor()
 sp.data %>% select(CAPE,CAPE.TR.Scaled) %>% drop_na() %>% plot()
 plot(sp.data$Date, sp.data$CAPE.TR.Scaled - sp.data$CAPE)
 
+# try imputing forward CPI change to calculate real interest rates
+# how far forward should we look? 1 year? 5 years? 10 years?
+sp.data.train.tbill.rates <- sp.data.train.tbill %>%
+  mutate(
+    CPI.12mo.future = lead(CPI,12),
+    CPI.60mo.ago = lag(CPI,60),
+    CPI.60mo.future = lead(CPI,60),
+    Inflation.Past.1Y = CPI / CPI.12mo.ago-1,
+    Inflation.Past.5Y = CPI / CPI.60mo.ago-1,
+    Inflation.Forward.1Y = CPI.12mo.future / CPI-1,
+    Inflation.Forward.5Y = CPI.60mo.future / CPI-1
+  )
+rates.lm <- lm(Inflation.Forward.1Y ~ Inflation.Past.1Y,
+               data=sp.data.train.tbill.rates)
+summary(rates.lm)
+# Adjusted R-squared:  0.2865 (with 5Y predictor)
+# Adjusted R-squared: 0.2731(without 5Y predictor)
+rates.lm.5y <- lm(Inflation.Forward.5Y ~ Inflation.Past.1Y + Inflation.Past.5Y,
+               data=sp.data.train.tbill.rates)
+summary(rates.lm.5y)
+
+
+sp.data.train.tbill.rates$Inflation.Forward.1Y.Pred <- predict(rates.lm,newdata=sp.data.train.tbill.rates)
+
+sp.data.train.tbill.rates %>% select(Inflation.Forward.1Y.Pred,Inflation.Forward.1Y) %>%
+  drop_na() %>%
+  plot()
+
+# use the estimated forward inflation to calculate a real T-bill rate
+sp.data.train.tbill.rates$Estimated.Real.Tbill.Rate <- sp.data.train.tbill.rates$Tbill.Rate -
+  sp.data.train.tbill.rates$Inflation.Forward.1Y.Pred
+sp.data.train.tbill.rates$Estimated.Real.GS10.Rate <- sp.data.train.tbill.rates$GS10 -
+  sp.data.train.tbill.rates$Inflation.Forward.1Y.Pred
+sp.data.train.tbill.rates$SP.Risk.Premium.Tbill.Real.Est <- sp.data.train.tbill.rates$Earnings.Yield - sp.data.train.tbill.rates$Estimated.Real.Tbill.Rate
+sp.data.train.tbill.rates$SP.Risk.Premium.GS10.Real.Est <- sp.data.train.tbill.rates$Earnings.Yield - sp.data.train.tbill.rates$Estimated.Real.GS10.Rate
+hist(sp.data.train.tbill.rates$SP.Risk.Premium.Tbill.Real.Est)
+summary(sp.data.train.tbill.rates$SP.Risk.Premium.Tbill.Real.Est)
+
+sp.data.train.tbill.rates %>%
+  select(SP.Risk.Premium.Tbill.Real.Est,SP.Return.Forward) %>%
+  mutate(SP.Return.Forward = SP.Return.Forward-1) %>%
+  drop_na() %>%
+  cor()
+
+# estimated real T-bill rate vs forward S&P returns
+# use 1st quantile as cutoff
+sp.data.train.tbill.rates %>% group_by(SP.Risk.Premium.Tbill.Real.Est>0.04) %>%
+  drop_na(`SP.Risk.Premium.Tbill.Real.Est > 0.04`) %>%
+  summarize(
+    Mean.Forward.Return=mean(SP.Return.Forward-1),
+    Median.Forward.Return=median(SP.Return.Forward-1),
+    Count=length(SP.Return.Forward-1)
+  )
+
