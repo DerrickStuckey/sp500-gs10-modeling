@@ -22,6 +22,11 @@ sp.data$SP.Momentum.6Mo.Negative <- sp.data$SP.Momentum.6Mo < 0
 # may get better performance with a combination of momentum factors, 
 # but don't want to overweight those too heavily vs other factors
 
+# Try multiple momentum factors
+sp.data$SP.Momentum.1Mo <- sp.data$SP.Price - sp.data$SP.Price.Last
+sp.data$SP.Momentum.1Mo.Negative <- sp.data$SP.Momentum.1Mo < 0
+sp.data$SP.Momentum.12Mo <- sp.data$SP.Price - sp.data$SP.Price.Prev.12Mo
+sp.data$SP.Momentum.12Mo.Negative <- sp.data$SP.Momentum.12Mo < 0
 
 # Add Yield Curve Status
 yield.curve.data <- read.csv("./prepared_data/yield_curve_10y_3mo.tsv",sep="\t")
@@ -85,19 +90,14 @@ tail(sp.data.train)
 head(sp.data.test)
 
 # train the Naive Bayes model
-
-# probability of negative 6-month momentum | S&P Outperforms GS10
-mo.tmp <- sp.data.train %>% select(SP.Momentum.6Mo.Negative,SP.Outperforms.GS10) %>%
-  drop_na() %>%
-  group_by(SP.Outperforms.GS10) %>%
-  summarize(Negative.Mo.Prob = mean(SP.Momentum.6Mo.Negative))
-p.negative.mo.if.sp.wins <- mo.tmp$Negative.Mo.Prob[mo.tmp$SP.Outperforms.GS10]
-p.negative.mo.if.sp.loses <- mo.tmp$Negative.Mo.Prob[!mo.tmp$SP.Outperforms.GS10]
-
-# just train the whole model at once
-nb.model <- naiveBayes(SP.Outperforms.GS10 ~ Yield.Curve.Inverted + Bullish.High + 
-                         SP.Momentum.6Mo.Negative + Low.Risk.Premium,
-                      data=sp.data.train)
+nb.model <- naiveBayes(SP.Outperforms.GS10 ~ 
+                         Yield.Curve.Inverted
+                         + Bullish.High
+                         + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         + SP.Momentum.1Mo.Negative
+                         + SP.Momentum.12Mo.Negative
+                       , data=sp.data.train)
 nb.model
 
 # performance against training data
@@ -106,25 +106,79 @@ summary(sp.data.train$SP.Outperforms.GS10.Pred)
 confusionMatrix(sp.data.train$SP.Outperforms.GS10.Pred,
       sp.data.train$SP.Outperforms.GS10)
 
+# Balanced Accuracy against training data
+# With all factors: 0.5728
+# 3 Momentum factors only: 0.5677
+# Yield curve only: 0.5728
+# Bullish only: 0.50470
+# Risk Premium only: 0.5 (always predicts yes)
+# All except Bullish: 0.5719
+# All except Yield Curve: 0.5739
+# All except Risk Premium: 0.5707
+# All except Momentum: 0.51128
+# Original model (6-month momentum and other factors): 0.5487
+
 # performance against test data
 sp.data.test$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.test)
 summary(sp.data.test$SP.Outperforms.GS10.Pred)
 confusionMatrix(sp.data.test$SP.Outperforms.GS10.Pred,
                 sp.data.test$SP.Outperforms.GS10)
 
-# simpler model - predict GS10 outperforms if any 2 predictors positive
-factor.score.test <- as.integer(sp.data.test$Yield.Curve.Status=="Inverted") + 
-  as.integer(sp.data.test$Bullish.High) + 
-  as.integer(sp.data.test$SP.Momentum.6Mo.Negative) + 
-  as.integer(sp.data.test$Low.Risk.Premium)
-table(factor.score.test)
+# Balanced Accuracy against test data
+# All factors: 0.56040
+# 3 momentum factors only: 0.56744
+# Original model: 0.45900
 
-sp.data.test$SP.Outperforms.GS10.Pred.2 <- factor.score.test < 2
-table(sp.data.test$SP.Outperforms.GS10.Pred.2,
-      sp.data.test$SP.Outperforms.GS10)
+# model return data
+model.return.data <- sp.data.test %>% select(Date,
+                                        Log.SP.Return.Forward,
+                                        Log.GS10.Return.Forward,
+                                        SP.Outperforms.GS10.Pred) %>%
+  drop_na() %>%
+  # filter(Date>"2010-01-01") %>%
+  mutate(
+    invest.in.sp = as.logical(SP.Outperforms.GS10.Pred),
+    Log.Model.Return.Forward=Log.SP.Return.Forward*invest.in.sp +
+      Log.GS10.Return.Forward*(!invest.in.sp),
+    Model.Log.Cumulative.Return=cumsum(Log.Model.Return.Forward),
+    SP.Log.Cumulative.Return=cumsum(Log.SP.Return.Forward),
+    GS10.Log.Cumulative.Return=cumsum(Log.GS10.Return.Forward)
+  )
+tail(model.return.data)
 
-sp.data.test %>% select(Date, SP.Return.Forward,GS10.Return.Forward,
-                        SP.Outperforms.GS10, SP.Outperforms.GS10.Pred,
-                        SP.Outperforms.GS10.Pred.2,
-                        Yield.Curve.Inverted, Bullish.High,
-                        SP.Momentum.6Mo.Negative, Low.Risk.Premium) %>% View()
+# 
+model.return.data %>%
+  mutate() %>%
+  summarize(
+    start.date=min(Date),
+    end.date=max(Date),
+    num.months=length(Date),
+    sp.return=exp(sum(Log.SP.Return.Forward)),
+    gs10.return=exp(sum(Log.GS10.Return.Forward)),
+    model.return.sp=exp(sum(Log.SP.Return.Forward*invest.in.sp)),
+    model.return.gs10=exp(sum(Log.GS10.Return.Forward*(!invest.in.sp)))
+    ) %>%
+  mutate(
+    model.total.return=model.return.sp * model.return.gs10
+  )
+  
+
+# plot cumulative returns over time for model vs S&P and GS10
+melted.return.data <- model.return.data %>% 
+  select(Date,Model.Log.Cumulative.Return,
+                             SP.Log.Cumulative.Return,
+                             GS10.Log.Cumulative.Return) %>%
+  rename(`S&P 500`=SP.Log.Cumulative.Return,
+         `10-Year Treasury`=GS10.Log.Cumulative.Return,
+         `Model`=Model.Log.Cumulative.Return) %>%
+  melt(id.vars = c("Date"))
+
+ggplot(data=melted.return.data, aes(x=Date,y=value,col=variable)) +
+  geom_line(aes(group=variable)) + 
+  ggtitle("Total Returns (Log-Scaled)") +
+  ylab("Log Total Return")
+
+
+
+
+
