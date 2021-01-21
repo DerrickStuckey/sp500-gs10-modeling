@@ -85,7 +85,7 @@ sp.data.test <- sp.data %>% filter(Date >= "2005-01-01")
 tail(sp.data.train)
 head(sp.data.test)
 
-# train the Naive Bayes model
+# train the Naive Bayes models
 nb.model.1 <- naiveBayes(SP.Outperforms.GS10 ~ 
                          Yield.Curve.Inverted
                          + Bullish.High
@@ -94,7 +94,6 @@ nb.model.1 <- naiveBayes(SP.Outperforms.GS10 ~
                          + SP.Momentum.1Mo.Negative
                          + SP.Momentum.12Mo.Negative
                        , data=sp.data.train)
-nb.model.1
 
 nb.model.2 <- naiveBayes(SP.Outperforms.GS10 ~ 
                            Yield.Curve.Inverted
@@ -104,7 +103,6 @@ nb.model.2 <- naiveBayes(SP.Outperforms.GS10 ~
                          + SP.Momentum.1Mo.Negative
                          + SP.Momentum.12Mo.Negative
                          , data=sp.data.train)
-nb.model.2
 
 nb.model.3 <- naiveBayes(SP.Outperforms.GS10 ~ 
                            Yield.Curve.Inverted
@@ -114,12 +112,91 @@ nb.model.3 <- naiveBayes(SP.Outperforms.GS10 ~
                          # + SP.Momentum.1Mo.Negative
                          # + SP.Momentum.12Mo.Negative
                          , data=sp.data.train)
-nb.model.3
+
+nb.model.4 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           Yield.Curve.Inverted
+                         + Bullish.High
+                         + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         + SP.Momentum.1Mo.Negative
+                         # + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train)
+
+nb.model.5 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           Yield.Curve.Inverted
+                         + Bullish.High
+                         # + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         # + SP.Momentum.1Mo.Negative
+                         # + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train)
+
+nb.model.6 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           Yield.Curve.Inverted
+                         # + Bullish.High
+                         + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         + SP.Momentum.1Mo.Negative
+                         + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train)
+
+nb.model.7 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           # Yield.Curve.Inverted
+                           Bullish.High
+                         + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         + SP.Momentum.1Mo.Negative
+                         + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train)
+
+nb.model.8 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           Yield.Curve.Inverted
+                         + Bullish.High
+                         + SP.Momentum.6Mo.Negative
+                         # + Low.Risk.Premium
+                         + SP.Momentum.1Mo.Negative
+                         + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train)
+
+nb.model.9 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           Yield.Curve.Inverted
+                         + Bullish.High
+                         + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         # + SP.Momentum.1Mo.Negative
+                         + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train)
+
+nb.model.10 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           Yield.Curve.Inverted
+                         + Bullish.High
+                         # + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         + SP.Momentum.1Mo.Negative
+                         # + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train)
+
+nb.model.11 <- naiveBayes(SP.Outperforms.GS10 ~ 
+                            # Yield.Curve.Inverted
+                          # + Bullish.High
+                          SP.Momentum.6Mo.Negative
+                          # + Low.Risk.Premium
+                          + SP.Momentum.1Mo.Negative
+                          + SP.Momentum.12Mo.Negative
+                          , data=sp.data.train)
 
 # set of models to evaluate against training data
 nb.models <- list("Full Model"=nb.model.1,
                "Exclude 6Mo"=nb.model.2,
-               "6Mo and Other Factors"=nb.model.3)
+               "6Mo and Other Factors"=nb.model.3,
+               "Exclude 12Mo"=nb.model.4,
+               "Exclude Momentum"=nb.model.5,
+               "Exclude Sentiment"=nb.model.6,
+               "Exclude Yield Curve"=nb.model.7,
+               "Exclude Risk Premium"=nb.model.8,
+               "Exclude 1Mo"=nb.model.9,
+               "Exclude 6Mo and 12Mo"=nb.model.10,
+               "1Mo, 6Mo, 12Mo Only"=nb.model.11)
 names(nb.models)
 
 # arrays to hold results
