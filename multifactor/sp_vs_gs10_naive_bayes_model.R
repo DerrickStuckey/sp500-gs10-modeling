@@ -262,6 +262,16 @@ for (model.name in names(nb.models)) {
       GS10.Log.Cumulative.Return=cumsum(Log.GS10.Return.Forward)
     )
     
+    # save monthly return stats
+    if (i==1) {
+      batch.label <- "Train"
+    } else {
+      batch.label <- "Validation"
+    }
+    write.table(model.return.data.train.subset, 
+                file=paste("./multifactor/naive_bayes_results/",model.name,"vs ",batch.label," Monthly.tsv",sep=""),
+                sep="\t",row.names = FALSE)
+    
     # total return stats for selected period
     total.return.stats.train.subset <- model.return.data.train.subset %>%
       mutate() %>%
@@ -350,10 +360,17 @@ nb.model.6mo <- naiveBayes(SP.Outperforms.GS10 ~
                             # + SP.Momentum.12Mo.Negative
                             , data=sp.data.train.val)
 
+nb.model.nomo <- naiveBayes(SP.Outperforms.GS10 ~ 
+                              Yield.Curve.Inverted
+                            + Bullish.High
+                            + Low.Risk.Premium
+                          , data=sp.data.train.val)
+
 # set of models to evaluate against test data
 nb.models <- list("Full Model"=nb.model.full,
                   "1Mo, 6Mo, 12Mo Only"=nb.model.mo,
-                  "6Mo and Other Factors"=nb.model.6mo)
+                  "6Mo and Other Factors"=nb.model.6mo,
+                  "Exclude Momentum"=nb.model.nomo)
 names(nb.models)
 
 # arrays to hold results
@@ -400,6 +417,11 @@ for (model.name in names(nb.models)) {
     SP.Log.Cumulative.Return=cumsum(Log.SP.Return.Forward),
     GS10.Log.Cumulative.Return=cumsum(Log.GS10.Return.Forward)
   )
+  
+  # save monthly return stats
+  write.table(model.return.data.test.subset, 
+              file=paste("./multifactor/naive_bayes_results/",model.name,"vs Test Monthly.tsv",sep=""),
+              sep="\t",row.names = FALSE)
   
   # total return stats for selected period
   total.return.stats.test.subset <- model.return.data.test.subset %>%
