@@ -80,10 +80,14 @@ sp.data <- sp.data %>%
 summary(sp.data$SP.Outperforms.GS10)
 
 # perform training / test split
-sp.data.train <- sp.data %>% filter(Date < "2005-01-01")
-sp.data.test <- sp.data %>% filter(Date >= "2005-01-01")
-tail(sp.data.train)
-head(sp.data.test)
+train.date.min <- as.Date("1950-01-01")
+train.date.max <- as.Date("1980-01-01")
+test.date.min <- as.Date("2005-01-01")
+sp.data.train <- sp.data %>% filter(Date >= train.date.min & Date < train.date.max)
+# sp.data.val <- sp.data %>% filter(Date >= "1980-01-01" & Date < "2005-01-01")
+sp.data.test <- sp.data %>% filter(Date >= test.date.min)
+dim(sp.data.train)
+dim(sp.data.test)
 
 # train the Naive Bayes models
 nb.model.1 <- naiveBayes(SP.Outperforms.GS10 ~ 
@@ -185,6 +189,8 @@ nb.model.11 <- naiveBayes(SP.Outperforms.GS10 ~
                           + SP.Momentum.12Mo.Negative
                           , data=sp.data.train)
 
+## evaluate performance against training and/or validation data
+
 # set of models to evaluate against training data
 nb.models <- list("Full Model"=nb.model.1,
                "Exclude 6Mo"=nb.model.2,
@@ -210,8 +216,10 @@ max.date.vals <- c()
 num.periods.vals <- c()
 periods.predicted.positive.vals <- c()
 
-period.starts <- c(as.Date("1934-01-01"),as.Date("1987-08-01"))
-period.ends <- c(as.Date("1987-08-01"),as.Date("9999-01-01"))
+# dataframe for training and validation data (if)
+sp.data.train.val <- sp.data %>% filter(Date >= train.date.min & Date < test.date.min)
+period.starts <- c(train.date.min,train.date.max)
+period.ends <- c(train.date.max,test.date.min)
 
 # calculate performance of each version on the training data
 for (model.name in names(nb.models)) {
@@ -223,10 +231,10 @@ for (model.name in names(nb.models)) {
     print(model.name)
     print(period.start)
     
-    # performance against training data
-    sp.data.train$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.train)
+    # performance against training and/or validation data
+    sp.data.train.val$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.train.val)
     # select subset of training data where prediction and reference are both available
-    sp.data.train.subset <- sp.data.train %>% 
+    sp.data.train.val.subset <- sp.data.train.val %>% 
       filter(Date >= as.Date(period.start)) %>%
       filter(Date < as.Date(period.end)) %>%
       select(Date,
@@ -236,16 +244,16 @@ for (model.name in names(nb.models)) {
              SP.Outperforms.GS10) %>%
       drop_na()
     # confusion matrix stats
-    cm <- confusionMatrix(sp.data.train.subset$SP.Outperforms.GS10.Pred,
-                          sp.data.train.subset$SP.Outperforms.GS10)
+    cm <- confusionMatrix(sp.data.train.val.subset$SP.Outperforms.GS10.Pred,
+                          sp.data.train.val.subset$SP.Outperforms.GS10)
     balanced.accuracy <- cm$byClass['Balanced Accuracy']
     num.periods <- sum(cm$table)
-    periods.predicted.positive <- sum(sp.data.train.subset$SP.Outperforms.GS10.Pred=="TRUE")
-    min.date <- min(sp.data.train.subset$Date) %>% as.character()
-    max.date <- max(sp.data.train.subset$Date) %>% as.character()
+    periods.predicted.positive <- sum(sp.data.train.val.subset$SP.Outperforms.GS10.Pred=="TRUE")
+    min.date <- min(sp.data.train.val.subset$Date) %>% as.character()
+    max.date <- max(sp.data.train.val.subset$Date) %>% as.character()
     
     # monthly return stats
-    model.return.data.train.subset <- sp.data.train.subset %>% mutate(
+    model.return.data.train.subset <- sp.data.train.val.subset %>% mutate(
       invest.in.sp = as.logical(SP.Outperforms.GS10.Pred),
       Log.Model.Return.Forward=Log.SP.Return.Forward*invest.in.sp +
         Log.GS10.Return.Forward*(!invest.in.sp),
@@ -263,11 +271,7 @@ for (model.name in names(nb.models)) {
         num.months=length(Date),
         sp.return=exp(sum(Log.SP.Return.Forward))-1,
         gs10.return=exp(sum(Log.GS10.Return.Forward))-1,
-        model.return.sp=exp(sum(Log.SP.Return.Forward*invest.in.sp))-1,
-        model.return.gs10=exp(sum(Log.GS10.Return.Forward*(!invest.in.sp)))-1
-      ) %>%
-      mutate(
-        model.total.return=model.return.sp * model.return.gs10
+        model.total.return=exp(sum(Log.Model.Return.Forward))-1
       )
     
     sp.total.performance <- total.return.stats.train.subset$sp.return
@@ -290,6 +294,7 @@ for (model.name in names(nb.models)) {
 # write out results to a dataframe
 training.results.df <- data.frame(
   "model.name"=model.name.vals,
+  "trained.on"=paste(as.character(train.date.min),as.character(train.date.max),sep=" to "),
   "balanced.accuracy"=balanced.accuracy.vals,
   "model.total.performance"=model.total.performance.vals,
   "sp.total.performance"=sp.total.performance.vals,
@@ -318,61 +323,76 @@ write.table(training.results.df, file="./multifactor/naive_bayes_results/trainin
 # Original model (6-month momentum and other factors): 0.5487
 
 
+## evaluate performance against test data
 
-# model return data
-# model.return.data.train.recent <- sp.data.train %>% 
-#   filter(Date > as.Date("1987-07-24")) %>%
-#   select(Date,
-#          Log.SP.Return.Forward,
-#          Log.GS10.Return.Forward,
-#          SP.Outperforms.GS10.Pred) %>%
-#   drop_na() %>%
-#   mutate(
-#     invest.in.sp = as.logical(SP.Outperforms.GS10.Pred),
-#     Log.Model.Return.Forward=Log.SP.Return.Forward*invest.in.sp +
-#       Log.GS10.Return.Forward*(!invest.in.sp),
-#     Model.Log.Cumulative.Return=cumsum(Log.Model.Return.Forward),
-#     SP.Log.Cumulative.Return=cumsum(Log.SP.Return.Forward),
-#     GS10.Log.Cumulative.Return=cumsum(Log.GS10.Return.Forward)
-#   )
-# tail(model.return.data.train.recent)
+# retrain models on training and validation data
+nb.model.full <- naiveBayes(SP.Outperforms.GS10 ~ 
+                           Yield.Curve.Inverted
+                         + Bullish.High
+                         + SP.Momentum.6Mo.Negative
+                         + Low.Risk.Premium
+                         + SP.Momentum.1Mo.Negative
+                         + SP.Momentum.12Mo.Negative
+                         , data=sp.data.train.val)
 
-# total performance on training data
-model.return.data.train.recent %>%
-  mutate() %>%
-  summarize(
-    start.date=min(Date),
-    end.date=max(Date),
-    num.months=length(Date),
-    sp.return=exp(sum(Log.SP.Return.Forward)),
-    gs10.return=exp(sum(Log.GS10.Return.Forward)),
-    model.return.sp=exp(sum(Log.SP.Return.Forward*invest.in.sp)),
-    model.return.gs10=exp(sum(Log.GS10.Return.Forward*(!invest.in.sp)))
-  ) %>%
-  mutate(
-    model.total.return=model.return.sp * model.return.gs10
-  )
+nb.model.mo <- naiveBayes(SP.Outperforms.GS10 ~ 
+                              SP.Momentum.6Mo.Negative
+                            + SP.Momentum.1Mo.Negative
+                            + SP.Momentum.12Mo.Negative
+                            , data=sp.data.train.val)
 
+nb.model.6mo <- naiveBayes(SP.Outperforms.GS10 ~ 
+                              Yield.Curve.Inverted
+                            + Bullish.High
+                            + SP.Momentum.6Mo.Negative
+                            + Low.Risk.Premium
+                            # + SP.Momentum.1Mo.Negative
+                            # + SP.Momentum.12Mo.Negative
+                            , data=sp.data.train.val)
 
-# performance against test data
-sp.data.test$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.test)
-summary(sp.data.test$SP.Outperforms.GS10.Pred)
-confusionMatrix(sp.data.test$SP.Outperforms.GS10.Pred,
-                sp.data.test$SP.Outperforms.GS10)
+# set of models to evaluate against test data
+nb.models <- list("Full Model"=nb.model.full,
+                  "1Mo, 6Mo, 12Mo Only"=nb.model.mo,
+                  "6Mo and Other Factors"=nb.model.6mo)
+names(nb.models)
 
-# Balanced Accuracy against test data
-# All factors: 0.56040
-# 3 momentum factors only: 0.56744
-# Original model: 0.45900
+# arrays to hold results
+model.name.vals <- c()
+balanced.accuracy.vals <- c()
+model.total.performance.vals <- c()
+sp.total.performance.vals <- c()
+gs.total.performance.vals <- c()
+min.date.vals <- c()
+max.date.vals <- c()
+num.periods.vals <- c()
+periods.predicted.positive.vals <- c()
 
-# model return data
-model.return.data <- sp.data.test %>% select(Date,
-                                        Log.SP.Return.Forward,
-                                        Log.GS10.Return.Forward,
-                                        SP.Outperforms.GS10.Pred) %>%
-  drop_na() %>%
-  # filter(Date>"2010-01-01") %>%
-  mutate(
+for (model.name in names(nb.models)) {
+  nb.model = nb.models[model.name][[1]]
+  
+  # calculate the predictions for the model
+  sp.data.test$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.test)
+  
+  # subset of test data where prediction and reference are both available
+  sp.data.test.subset <- sp.data.test %>% 
+    select(Date,
+           Log.SP.Return.Forward,
+           Log.GS10.Return.Forward,
+           SP.Outperforms.GS10.Pred,
+           SP.Outperforms.GS10) %>%
+    drop_na()
+  
+  # confusion matrix stats
+  cm <- confusionMatrix(sp.data.test.subset$SP.Outperforms.GS10.Pred,
+                        sp.data.test.subset$SP.Outperforms.GS10)
+  balanced.accuracy <- cm$byClass['Balanced Accuracy']
+  num.periods <- sum(cm$table)
+  periods.predicted.positive <- sum(sp.data.test.subset$SP.Outperforms.GS10.Pred=="TRUE")
+  min.date <- min(sp.data.test.subset$Date) %>% as.character()
+  max.date <- max(sp.data.test.subset$Date) %>% as.character()
+  
+  # monthly return stats
+  model.return.data.test.subset <- sp.data.test.subset %>% mutate(
     invest.in.sp = as.logical(SP.Outperforms.GS10.Pred),
     Log.Model.Return.Forward=Log.SP.Return.Forward*invest.in.sp +
       Log.GS10.Return.Forward*(!invest.in.sp),
@@ -380,44 +400,75 @@ model.return.data <- sp.data.test %>% select(Date,
     SP.Log.Cumulative.Return=cumsum(Log.SP.Return.Forward),
     GS10.Log.Cumulative.Return=cumsum(Log.GS10.Return.Forward)
   )
-tail(model.return.data)
-
-# 
-model.return.data %>%
-  mutate() %>%
-  summarize(
-    start.date=min(Date),
-    end.date=max(Date),
-    num.months=length(Date),
-    sp.return=exp(sum(Log.SP.Return.Forward)),
-    gs10.return=exp(sum(Log.GS10.Return.Forward)),
-    model.return.sp=exp(sum(Log.SP.Return.Forward*invest.in.sp)),
-    model.return.gs10=exp(sum(Log.GS10.Return.Forward*(!invest.in.sp)))
-    ) %>%
-  mutate(
-    model.total.return=model.return.sp * model.return.gs10
-  )
   
+  # total return stats for selected period
+  total.return.stats.test.subset <- model.return.data.test.subset %>%
+    mutate() %>%
+    summarize(
+      start.date=min(Date),
+      end.date=max(Date),
+      num.months=length(Date),
+      sp.return=exp(sum(Log.SP.Return.Forward))-1,
+      gs10.return=exp(sum(Log.GS10.Return.Forward))-1,
+      model.total.return=exp(sum(Log.Model.Return.Forward))-1
+    )
+  
+  sp.total.performance <- total.return.stats.test.subset$sp.return
+  gs.total.performance <- total.return.stats.test.subset$gs10.return
+  model.total.performance <- total.return.stats.test.subset$model.total.return
+  
+  # append each value to its array
+  model.name.vals <- c(model.name.vals, model.name)
+  balanced.accuracy.vals <- c(balanced.accuracy.vals, balanced.accuracy)
+  model.total.performance.vals <- c(model.total.performance.vals, model.total.performance)
+  sp.total.performance.vals <- c(sp.total.performance.vals, sp.total.performance)
+  gs.total.performance.vals <- c(gs.total.performance.vals, gs.total.performance)
+  min.date.vals <- c(min.date.vals, min.date)
+  max.date.vals <- c(max.date.vals, max.date)
+  num.periods.vals <- c(num.periods.vals, num.periods)
+  periods.predicted.positive.vals <- c(periods.predicted.positive.vals, periods.predicted.positive)
+  
+  # plot cumulative returns over time for model vs S&P and GS10
+  melted.return.data <- model.return.data.test.subset %>%
+    select(Date,Model.Log.Cumulative.Return,
+           SP.Log.Cumulative.Return,
+           GS10.Log.Cumulative.Return) %>%
+    rename(`S&P 500`=SP.Log.Cumulative.Return,
+           `10-Year Treasury`=GS10.Log.Cumulative.Return,
+           `Model`=Model.Log.Cumulative.Return) %>%
+    melt(id.vars = c("Date"))
+  
+  p <- ggplot(data=melted.return.data, aes(x=Date,y=value,col=variable)) +
+    geom_line(aes(group=variable)) +
+    ggtitle(model.name) +
+    ylab("Log Total Return")
+  ggsave(plot=p,filename=paste("./multifactor/naive_bayes_results/",model.name," Test.png",sep=""))
+  
+  # plot model return difference with S&P
+  p2 <- ggplot(data=model.return.data.test.subset,
+         aes(x=Date,y=Model.Log.Cumulative.Return-SP.Log.Cumulative.Return)) +
+    geom_line() +
+    ggtitle(model.name) +
+    ylab("Model Return - S&P 500 Return\n(Log-Scaled")
+  ggsave(plot=p2,filename=paste("./multifactor/naive_bayes_results/",model.name," vs SP Test.png",sep=""))
+}
 
-# plot cumulative returns over time for model vs S&P and GS10
-melted.return.data <- model.return.data %>% 
-  select(Date,Model.Log.Cumulative.Return,
-                             SP.Log.Cumulative.Return,
-                             GS10.Log.Cumulative.Return) %>%
-  rename(`S&P 500`=SP.Log.Cumulative.Return,
-         `10-Year Treasury`=GS10.Log.Cumulative.Return,
-         `Model`=Model.Log.Cumulative.Return) %>%
-  melt(id.vars = c("Date"))
+# write out results to a dataframe
+test.results.df <- data.frame(
+  "trained.on"=paste(as.character(train.date.min),as.character(train.date.max),sep=" to "),
+  "model.name"=model.name.vals,
+  "balanced.accuracy"=balanced.accuracy.vals,
+  "model.total.performance"=model.total.performance.vals,
+  "sp.total.performance"=sp.total.performance.vals,
+  "gs.total.performance"=gs.total.performance.vals,
+  "eval.min.date"=min.date.vals,
+  "eval.max.date"=max.date.vals,
+  "num.periods"=num.periods.vals,
+  "periods.predicted.positive"=periods.predicted.positive.vals
+)
 
-ggplot(data=melted.return.data, aes(x=Date,y=value,col=variable)) +
-  geom_line(aes(group=variable)) + 
-  ggtitle("Total Returns (Log-Scaled)") +
-  ylab("Log Total Return")
+# View(test.results.df)
+write.table(test.results.df, file="./multifactor/naive_bayes_results/test_data_results.tsv",
+            sep="\t",row.names = FALSE)
 
-# plot model return difference with S&P
-ggplot(data=model.return.data, 
-       aes(x=Date,y=Model.Log.Cumulative.Return-SP.Log.Cumulative.Return)) +
-  geom_line() + 
-  ggtitle("Model Return - S&P 500 Return\n(Log-Scaled)") +
-  ylab("Log Total Return Difference")
 
