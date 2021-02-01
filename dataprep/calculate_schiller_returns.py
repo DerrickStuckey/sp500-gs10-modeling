@@ -20,13 +20,12 @@ data['SP.Return.Forward'] = np.divide(np.add(data['SP.Price.Next'], data['Divide
 # ignore tax and transaction costs
 nrows = data.shape[0]
 principal=1
-duration=12*10-1 # duration in months
+duration=12*10 # duration in months
 for i in range(0,nrows,1):
 	try:
 		coupon_rate=data.loc[i,'GS10']/12
 		discount_rate = data.loc[i+1,'GS10']/12
-		data.loc[i,'GS10.NPV.Forward'] = finance_utils.bond_npv(principal=principal,duration=duration,coupon_rate=coupon_rate,discount_rate=discount_rate)
-		data.loc[i,'GS10.Return.Forward'] = data.loc[i,'GS10.NPV.Forward'] + coupon_rate
+		data.loc[i,'GS10.Return.Forward'] = finance_utils.bond_return_single_period(principal=principal,original_duration=duration,coupon_rate=coupon_rate,discount_rate=discount_rate)
 	except:
 		pass
 
