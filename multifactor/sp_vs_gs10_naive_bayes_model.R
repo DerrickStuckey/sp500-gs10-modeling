@@ -4,6 +4,7 @@ library(tidyverse)
 library(lubridate)
 library(e1071)
 library(caret)
+library(reshape2)
 
 # S&P 500 and 10-year treasury returns data
 # from monthly since 1871
@@ -238,6 +239,8 @@ for (model.name in names(nb.models)) {
       filter(Date >= as.Date(period.start)) %>%
       filter(Date < as.Date(period.end)) %>%
       select(Date,
+             SP.Price,
+             GS10,
              Log.SP.Return.Forward,
              Log.GS10.Return.Forward,
              SP.Outperforms.GS10.Pred,
@@ -269,7 +272,7 @@ for (model.name in names(nb.models)) {
       batch.label <- "Validation"
     }
     write.table(model.return.data.train.subset, 
-                file=paste("./multifactor/naive_bayes_results/",model.name,"vs ",batch.label," Monthly.tsv",sep=""),
+                file=paste("./multifactor/naive_bayes_results/",model.name," vs ",batch.label," Monthly.tsv",sep=""),
                 sep="\t",row.names = FALSE)
     
     # total return stats for selected period
@@ -360,17 +363,46 @@ nb.model.6mo <- naiveBayes(SP.Outperforms.GS10 ~
                             # + SP.Momentum.12Mo.Negative
                             , data=sp.data.train.val)
 
+nb.model.1mo <- naiveBayes(SP.Outperforms.GS10 ~ 
+                             Yield.Curve.Inverted
+                           + Bullish.High
+                           # + SP.Momentum.6Mo.Negative
+                           + Low.Risk.Premium
+                           + SP.Momentum.1Mo.Negative
+                           # + SP.Momentum.12Mo.Negative
+                           , data=sp.data.train.val)
+
+nb.model.12mo <- naiveBayes(SP.Outperforms.GS10 ~ 
+                             Yield.Curve.Inverted
+                           + Bullish.High
+                           # + SP.Momentum.6Mo.Negative
+                           + Low.Risk.Premium
+                           # + SP.Momentum.1Mo.Negative
+                           + SP.Momentum.12Mo.Negative
+                           , data=sp.data.train.val)
+
 nb.model.nomo <- naiveBayes(SP.Outperforms.GS10 ~ 
                               Yield.Curve.Inverted
                             + Bullish.High
                             + Low.Risk.Premium
                           , data=sp.data.train.val)
 
+nb.model.nosent <- naiveBayes(SP.Outperforms.GS10 ~ 
+                                Yield.Curve.Inverted
+                              + SP.Momentum.6Mo.Negative
+                              + Low.Risk.Premium
+                              + SP.Momentum.1Mo.Negative
+                              + SP.Momentum.12Mo.Negative
+                              , data=sp.data.train.val)
+
 # set of models to evaluate against test data
 nb.models <- list("Full Model"=nb.model.full,
                   "1Mo, 6Mo, 12Mo Only"=nb.model.mo,
                   "6Mo and Other Factors"=nb.model.6mo,
-                  "Exclude Momentum"=nb.model.nomo)
+                  "12Mo and Other Factors"=nb.model.12mo,
+                  "1Mo and Other Factors"=nb.model.1mo,
+                  "Exclude Momentum"=nb.model.nomo,
+                  "Exclude Sentiment"=nb.model.nosent)
 names(nb.models)
 
 # arrays to hold results
@@ -393,6 +425,8 @@ for (model.name in names(nb.models)) {
   # subset of test data where prediction and reference are both available
   sp.data.test.subset <- sp.data.test %>% 
     select(Date,
+           SP.Price,
+           GS10,
            Log.SP.Return.Forward,
            Log.GS10.Return.Forward,
            SP.Outperforms.GS10.Pred,
@@ -420,7 +454,7 @@ for (model.name in names(nb.models)) {
   
   # save monthly return stats
   write.table(model.return.data.test.subset, 
-              file=paste("./multifactor/naive_bayes_results/",model.name,"vs Test Monthly.tsv",sep=""),
+              file=paste("./multifactor/naive_bayes_results/",model.name," vs Test Monthly.tsv",sep=""),
               sep="\t",row.names = FALSE)
   
   # total return stats for selected period
@@ -464,7 +498,7 @@ for (model.name in names(nb.models)) {
     geom_line(aes(group=variable)) +
     ggtitle(model.name) +
     ylab("Log Total Return")
-  ggsave(plot=p,filename=paste("./multifactor/naive_bayes_results/",model.name," Test.png",sep=""))
+  ggsave(plot=p,filename=paste("./multifactor/naive_bayes_results/plots/",model.name," Test.png",sep=""))
   
   # plot model return difference with S&P
   p2 <- ggplot(data=model.return.data.test.subset,
@@ -472,13 +506,13 @@ for (model.name in names(nb.models)) {
     geom_line() +
     ggtitle(model.name) +
     ylab("Model Return - S&P 500 Return\n(Log-Scaled")
-  ggsave(plot=p2,filename=paste("./multifactor/naive_bayes_results/",model.name," vs SP Test.png",sep=""))
+  ggsave(plot=p2,filename=paste("./multifactor/naive_bayes_results/plots/",model.name," vs SP Test.png",sep=""))
 }
 
 # write out results to a dataframe
 test.results.df <- data.frame(
-  "trained.on"=paste(as.character(train.date.min),as.character(train.date.max),sep=" to "),
   "model.name"=model.name.vals,
+  "trained.on"=paste(as.character(train.date.min),as.character(test.date.min),sep=" to "),
   "balanced.accuracy"=balanced.accuracy.vals,
   "model.total.performance"=model.total.performance.vals,
   "sp.total.performance"=sp.total.performance.vals,
