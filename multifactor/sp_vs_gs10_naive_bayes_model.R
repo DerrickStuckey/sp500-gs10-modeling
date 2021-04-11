@@ -395,6 +395,22 @@ nb.model.nosent <- naiveBayes(SP.Outperforms.GS10 ~
                               + SP.Momentum.12Mo.Negative
                               , data=sp.data.train.val)
 
+nb.model.noval <- naiveBayes(SP.Outperforms.GS10 ~ 
+                              Yield.Curve.Inverted
+                            + Bullish.High
+                            + SP.Momentum.6Mo.Negative
+                            + SP.Momentum.1Mo.Negative
+                            + SP.Momentum.12Mo.Negative
+                            , data=sp.data.train.val)
+
+nb.model.noyc <- naiveBayes(SP.Outperforms.GS10 ~ 
+                              Bullish.High
+                            + SP.Momentum.6Mo.Negative
+                            + Low.Risk.Premium
+                            + SP.Momentum.1Mo.Negative
+                            + SP.Momentum.12Mo.Negative
+                            , data=sp.data.train.val)
+
 # set of models to evaluate against test data
 nb.models <- list("Full Model"=nb.model.full,
                   "1Mo, 6Mo, 12Mo Only"=nb.model.mo,
@@ -402,7 +418,9 @@ nb.models <- list("Full Model"=nb.model.full,
                   "12Mo and Other Factors"=nb.model.12mo,
                   "1Mo and Other Factors"=nb.model.1mo,
                   "Exclude Momentum"=nb.model.nomo,
-                  "Exclude Sentiment"=nb.model.nosent)
+                  "Exclude Sentiment"=nb.model.nosent,
+                  "Exclude Risk Premium"=nb.model.noval,
+                  "Exclude Yield Curve"=nb.model.noyc)
 names(nb.models)
 
 # arrays to hold results
@@ -416,6 +434,7 @@ max.date.vals <- c()
 num.periods.vals <- c()
 periods.predicted.positive.vals <- c()
 
+# calculate and plot returns for each model against test data
 for (model.name in names(nb.models)) {
   nb.model = nb.models[model.name][[1]]
   
@@ -505,7 +524,7 @@ for (model.name in names(nb.models)) {
          aes(x=Date,y=Model.Log.Cumulative.Return-SP.Log.Cumulative.Return)) +
     geom_line() +
     ggtitle(model.name) +
-    ylab("Model Return - S&P 500 Return\n(Log-Scaled")
+    ylab("Model Return - S&P 500 Return\n(Log-Scaled)")
   ggsave(plot=p2,filename=paste("./multifactor/naive_bayes_results/plots/",model.name," vs SP Test.png",sep=""))
 }
 
