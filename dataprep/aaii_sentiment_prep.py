@@ -6,7 +6,7 @@ import numpy as np
 # 'sentiment' tab from https://www.aaii.com/files/surveys/sentiment.xls - saved as tab-delimited text
 fname = "../raw_data/sentiment.txt"
 rows = []
-with open(fname,'rb') as f:
+with open(fname,'r') as f:
 	thereader = csv.reader(f,delimiter="\t")
 	start=False
 	headerstart = "6-26-87"

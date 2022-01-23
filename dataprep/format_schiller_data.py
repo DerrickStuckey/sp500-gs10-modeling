@@ -6,7 +6,7 @@ import numpy as np
 # 'Data' tab from http://www.econ.yale.edu/~shiller/data/ie_data.xls - saved as tab-delimited text
 fname = "../raw_data/schiller_sp_data.txt"
 rows = []
-with open(fname,'rb') as f:
+with open(fname,'r') as f:
 	thereader = csv.reader(f,delimiter="\t")
 	start=False
 	headerstart = "Date"
