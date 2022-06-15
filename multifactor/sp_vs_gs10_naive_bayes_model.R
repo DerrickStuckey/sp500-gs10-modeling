@@ -163,6 +163,8 @@ for (model.name in names(nb.models)) {
     
     # performance against training and/or validation data
     sp.data.train.val$SP.Outperforms.GS10.Pred <- predict(nb.model, newdata=sp.data.train.val)
+    # TODO this works up to line 451, where bullish.high is null, fails on subsequent rows
+    
     # select subset of training data where prediction and reference are both available
     sp.data.train.val.subset <- sp.data.train.val %>% 
       filter(Date >= as.Date(period.start)) %>%
