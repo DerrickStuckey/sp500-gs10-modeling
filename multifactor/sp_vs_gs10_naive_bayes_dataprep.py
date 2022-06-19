@@ -20,9 +20,12 @@ aaii_filename = "../prepared_data/sentiment_data_formatted.tsv"
 aaii_data = pd.read_csv(aaii_filename, sep="\t")
 
 # Associate the most recent sentiment data report with each month
+aaii_data = aaii_data.astype({"ReportedDate": np.datetime64})
 aaii_data['Ceiling.Month'] = aaii_data['ReportedDate'] + pd.offsets.MonthBegin(0)
-# TODO keep only the latest entry for each Ceiling.Month
-
+# keep only the latest entry for each month
+aaii_data_reverse = aaii_data.sort_index(ascending=False)
+aaii_data_reverse_dupl = aaii_data_reverse['Ceiling.Month'].duplicated()
+aaii_data_monthly = aaii_data_reverse[aaii_data_reverse_dupl==False].sort_index(ascending=True)
 
 ## T-bill rate for risk premium calculation
 TB3MS = pd.read_csv("../raw_data/TB3MS.csv")
@@ -32,7 +35,7 @@ TB3MS = pd.read_csv("../raw_data/TB3MS.csv")
 # yield_curve_data.dtypes
 schiller_data = schiller_data.astype({"Date": np.datetime64})
 yield_curve_data = yield_curve_data.astype({"DATE": np.datetime64})
-aaii_data = aaii_data.astype({"ReportedDate": np.datetime64})
+
 TB3MS = TB3MS.astype({"DATE": np.datetime64})
 
 ## join all the tables
@@ -41,6 +44,8 @@ TB3MS = TB3MS.astype({"DATE": np.datetime64})
 joined_data = pd.merge(schiller_data, yield_curve_data, how="left", left_on="Date", right_on="DATE")
 
 # verify the join
+schiller_data.shape
+joined_data.shape
 schiller_data['Date'].tail()
 yield_curve_data['DATE'].head()
 yield_curve_data['DATE'].tail()
@@ -49,18 +54,24 @@ joined_data[['Date','Yield.Curve.Status']].tail()
 yield_curve_data['Yield.Curve.Status'].value_counts()
 joined_data['Yield.Curve.Status'].value_counts()
 
-import pdb; pdb.set_trace()
-
 # add t-bill rate data
 joined_data = pd.merge(joined_data, TB3MS, how="left", left_on="Date", right_on="DATE")
+joined_data.shape
+joined_data[['Date','TB3MS']].head()
+joined_data[['Date','TB3MS']].tail()
+joined_data['TB3MS'].describe()
+TB3MS['TB3MS'].describe()
 
 # add aaii data
-aaii_data.head()
-joined_data = pd.merge(joined_data, aaii_data, how="left", left_on="Date", right_on="Date")
+aaii_data_monthly.head()
+joined_data = pd.merge(joined_data, aaii_data_monthly, how="left", left_on="Date", right_on="Ceiling.Month")
+joined_data.shape
 joined_data[['Date','Bullish']].head()
 joined_data[['Date','Bullish']].tail()
-aaii_data['Bullish'].describe()
+aaii_data_monthly['Bullish'].describe()
 joined_data['Bullish'].describe()
+
+import pdb; pdb.set_trace()
 
 # Construct the target variable
 # For a Naive Bayes model we need a categorical target, so just use a binary variable
