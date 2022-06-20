@@ -7,9 +7,21 @@ schiller_data = pd.read_csv(schiller_data_prepared_fname, sep="\t")
 schiller_data.dtypes
 
 # Calculate Momentum Factors
-
-# use CAPE for earnings yield for smoothing
-
+# use np.sign to preserve NaN when one value is unavailable
+schiller_data['SP.Momentum.1Mo.Negative'] = np.sign(schiller_data['SP.Price.Last'] - schiller_data['SP.Price'])
+schiller_data['SP.Momentum.6Mo.Negative'] = np.sign(schiller_data['SP.Price.Prev.6Mo'] - schiller_data['SP.Price'])
+schiller_data['SP.Momentum.12Mo.Negative'] = np.sign(schiller_data['SP.Price.Prev.12Mo'] - schiller_data['SP.Price'])
+# relabel sign=-1 to sign=0
+schiller_data['SP.Momentum.1Mo.Negative'].mask(schiller_data['SP.Momentum.1Mo.Negative']<0,0,inplace=True)
+schiller_data['SP.Momentum.6Mo.Negative'].mask(schiller_data['SP.Momentum.6Mo.Negative']<0,0,inplace=True)
+schiller_data['SP.Momentum.12Mo.Negative'].mask(schiller_data['SP.Momentum.12Mo.Negative']<0,0,inplace=True)
+# verify on latest 100 entries for each
+(schiller_data['SP.Price.Last'] < schiller_data['SP.Price'])[-100:-1].value_counts()
+schiller_data['SP.Momentum.1Mo.Negative'][-100:-1].value_counts()
+(schiller_data['SP.Price.Prev.6Mo'] < schiller_data['SP.Price'])[-100:-1].value_counts()
+schiller_data['SP.Momentum.6Mo.Negative'][-100:-1].value_counts()
+(schiller_data['SP.Price.Prev.12Mo'] < schiller_data['SP.Price'])[-100:-1].value_counts()
+schiller_data['SP.Momentum.12Mo.Negative'][-100:-1].value_counts()
 
 ## Yield Curve Status
 yield_curve_fname = "../prepared_data/yield_curve_10y_3mo.tsv"
@@ -70,6 +82,9 @@ joined_data[['Date','Bullish']].head()
 joined_data[['Date','Bullish']].tail()
 aaii_data_monthly['Bullish'].describe()
 joined_data['Bullish'].describe()
+
+# calculate risk premium
+# use CAPE for earnings yield for smoothing
 
 import pdb; pdb.set_trace()
 
