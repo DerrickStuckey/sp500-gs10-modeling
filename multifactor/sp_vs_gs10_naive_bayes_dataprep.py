@@ -73,6 +73,10 @@ joined_data[['Date','TB3MS']].head()
 joined_data[['Date','TB3MS']].tail()
 joined_data['TB3MS'].describe()
 TB3MS['TB3MS'].describe()
+joined_data['Tbill.Rate'] = np.divide(joined_data['TB3MS'],100)
+joined_data['Tbill.Rate'].tail()
+
+# TODO add in 10-year treasury data and calculate yield curve here
 
 # add aaii data
 aaii_data_monthly.head()
@@ -85,6 +89,14 @@ joined_data['Bullish'].describe()
 
 # calculate risk premium
 # use CAPE for earnings yield for smoothing
+joined_data['Earnings.Yield'] = np.divide(1,joined_data['CAPE'])
+joined_data[['Date','Earnings.Yield','CAPE']].tail()
+joined_data['SP.Risk.Premium.Tbill'] = np.subtract(joined_data['Earnings.Yield'], joined_data['Tbill.Rate'])
+joined_data[['Date','SP.Risk.Premium.Tbill','Earnings.Yield','Tbill.Rate']].tail()
+# use np.sign to preserve NaN cases
+joined_data['Low.Risk.Premium'] = np.sign(np.subtract(0.01,joined_data['SP.Risk.Premium.Tbill']))
+# consider cases where risk premium = 0.01 to be high risk premium
+joined_data['Low.Risk.Premium'].mask(joined_data['Low.Risk.Premium']<0,0,inplace=True)
 
 import pdb; pdb.set_trace()
 
@@ -92,4 +104,13 @@ import pdb; pdb.set_trace()
 # For a Naive Bayes model we need a categorical target, so just use a binary variable
 # indicating whether the S&P 500 or 10-year treasury performs better 
 # on a one-month forward basis
+
+# use np.sign to preserve NaN cases
+joined_data['SP.Outperforms.GS10'] = np.sign(np.subtract(joined_data['SP.Return.Forward'], joined_data['GS10.Return.Forward']))
+# tie goes to bonds
+joined_data['SP.Outperforms.GS10'].mask(joined_data['SP.Outperforms.GS10']<0,0,inplace=True)
+
+# verify
+joined_data[['Date','SP.Outperforms.GS10','SP.Return.Forward','GS10.Return.Forward']].tail()
+joined_data['SP.Outperforms.GS10'].value_counts()
 
