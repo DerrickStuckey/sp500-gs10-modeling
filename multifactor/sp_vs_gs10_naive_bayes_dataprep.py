@@ -35,6 +35,13 @@ aaii_data_reverse = aaii_data.sort_index(ascending=False)
 aaii_data_reverse_dupl = aaii_data_reverse['Ceiling.Month'].duplicated()
 aaii_data_monthly = aaii_data_reverse[aaii_data_reverse_dupl==False].sort_index(ascending=True)
 
+# calculate sentiment features
+aaii_data_monthly['Bull.Bear.Spread'] = np.subtract(aaii_data_monthly['Bullish'],aaii_data_monthly['Bearish'])
+aaii_data_monthly['Bull.Bear.Spread.Positive'] = np.sign(aaii_data_monthly['Bull.Bear.Spread'])
+aaii_data_monthly['Bull.Bear.Spread.Positive'].value_counts()
+# consider tie to be negative
+aaii_data_monthly['Bull.Bear.Spread.Positive'].mask(aaii_data_monthly['Bull.Bear.Spread.Positive']<0,0, inplace=True)
+
 ## T-bill rate for risk premium calculation
 TB3MS = pd.read_csv("../raw_data/TB3MS.csv")
 TB3MS['Tbill.Rate'] = np.divide(TB3MS['TB3MS'],100)
