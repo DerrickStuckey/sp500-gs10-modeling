@@ -36,3 +36,16 @@ clf.fit(X, y)
 y_pred = clf.predict(X)
 
 confusion_matrix(y, y_pred)
+
+
+# fisher's exact test some predictors
+from scipy.stats import fisher_exact
+import numpy as np
+sentiment_frequencies = nonna_data[['Bull.Bear.Spread.Positive','SP.Outperforms.GS10']].value_counts()
+sentiment_contingency = [[sentiment_frequencies[0][0], sentiment_frequencies[0][1]],
+  [sentiment_frequencies[1][0], sentiment_frequencies[1][1]]]
+odds_ratio, p_value = fisher_exact(sentiment_contingency)
+odds_ratio
+p_value
+
+
