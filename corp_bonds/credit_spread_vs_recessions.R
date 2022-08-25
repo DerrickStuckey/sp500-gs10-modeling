@@ -45,4 +45,26 @@ ggplot(data=combined.data) +
   geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='black', alpha=0.3)
 
 
+# 20-year treasury yield
+# from https://fred.stlouisfed.org/series/DGS20
+DGS20 <- read.csv("./raw_data/DGS20.csv", stringsAsFactors = FALSE)
+DGS20$DGS20 <- as.numeric(DGS20$DGS20) / 100
 
+combined.data.20 <- DGS20 %>%
+  inner_join(corp.bonds, by=c("DATE"="DATE"))
+combined.data.20$spread <- combined.data.20$AAA - combined.data.20$DGS20
+combined.data.20$Date <- combined.data.20$DATE %>% as.Date(format="%Y-%m-%d")
+combined.data.20 <- combined.data.20 %>%
+  select(-DATE)
+head(combined.data.20)
+tail(combined.data.20)
+
+# plot credit spread with recessions shaded
+ggplot(data=combined.data.20) + 
+  geom_line(aes(x=Date,y=spread),color="blue") + 
+  ggtitle("AAA Bonds Spread vs 20-Year Treasury") + 
+  xlab("Date") + ylab("AAA-DGS20") + 
+  theme_light() + theme(plot.title = element_text(hjust = 0.5)) + 
+  geom_hline(yintercept=0) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
+  geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='black', alpha=0.3)
